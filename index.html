@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>包子饅頭 - 團購下單系統</title>
+    <style>
+        :root {
+            --primary-color: #e67e22;
+            --secondary-color: #f39c12;
+            --background-color: #fcf8f2;
+            --text-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            color: var(--primary-color);
+            border-left: 5px solid var(--primary-color);
+            padding-left: 10px;
+            margin: 25px 0 15px 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #fdf5ec;
+            color: var(--primary-color);
+        }
+
+        .qty-input {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .price-tag {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        .summary-box {
+            background-color: #fdf5ec;
+            border: 1px dashed var(--secondary-color);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 1.2em;
+            margin-bottom: 25px;
+        }
+
+        .total-amount {
+            color: #d35400;
+            font-weight: bold;
+            font-size: 1.5em;
+        }
+
+        button.submit-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+        }
+
+        button.submit-btn:hover {
+            background-color: #d35400;
+        }
+
+        button.submit-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        /* 彈出視窗 (Modal) 樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            text-align: left;
+        }
+
+        .modal-header {
+            font-size: 1.5em;
+            color: #2ecc71;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .modal-body {
+            font-size: 1em;
+            line-height: 1.6;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+
+        .modal-body ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .modal-total {
+            font-size: 1.3em;
+            color: #c0392b;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .close-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .close-btn:hover {
+            background-color: #d35400;
+        }
+
+        @media (max-width: 600px) {
+            th:nth-child(2), td:nth-child(2) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>手工包子饅頭團購單</h1>
+    <p class="subtitle">店名:鄉品包子。 填妥下方數量後即可送出訂單。</p>
+
+    <form id="orderForm" onsubmit="submitOrder(event)">
+        <div class="section-title">Step 1. 填寫訂購人資訊</div>
+        <div class="form-group">
+            <label for="name">訂購人姓名 *</label>
+            <input type="text" id="name" required placeholder="請輸入您的姓名">
+        </div>
+
+        <div class="section-title">Step 2. 選擇商品數量</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>商品名稱</th>
+                    <th>規格</th>
+                    <th>價格</th>
+                    <th style="text-align: center;">數量 (包)</th>
+                </tr>
+            </thead>
+            <tbody id="product-list">
+                </tbody>
+        </table>
+
+        <div class="summary-box">
+            總計共 <span id="total-qty">0</span> 包，
+            應付總金額：<span class="total-amount">NT$ <span id="total-price">0</span></span>
+        </div>
+
+        <button type="submit" id="submitBtn" class="submit-btn">確認送出訂單</button>
+    </form>
+</div>
+
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">🎉 訂單送出成功！</div>
+        <div class="modal-body">
+            <p><strong>訂購人：</strong> <span id="confirm-name"></span></p>
+            <p><strong>訂購品項明細：</strong></p>
+            <ul id="confirm-details"></ul>
+            <div class="modal-total">
+                共 <span id="confirm-qty" style="color:#2c3e50;"></span> 包，總金額：NT$ <span id="confirm-price"></span> 元
+            </div>
+        </div>
+        <button class="close-btn" onclick="closeModal()">好的，我知道了</button>
+    </div>
+</div>
+
+<script>
+    // 🔗 您的 Google Apps Script 網頁應用程式 URL
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
+
+    const products = [
+        { name: "鄉品鮮肉包", spec: "一包125元(5顆)", price: 125 },
+        { name: "酸菜鮮肉包", spec: "一包150元(5顆)", price: 150 },
+        { name: "竹筍鮮肉包", spec: "一包150元(5顆)", price: 150 },
+        { name: "香菇高麗菜包", spec: "一包125元(5顆)", price: 125 },
+        { name: "紅豆包", spec: "一包125元(5顆)", price: 125 },
+        { name: "芝麻包", spec: "一包150元(5顆)", price: 150 },
+        { name: "紅豆起司包", spec: "一包150元(5顆)", price: 150 },
+        { name: "白玉饅頭", spec: "一包75元(5顆)", price: 75 },
+        { name: "黑糖饅頭", spec: "一包75元(5顆)", price: 75 },
+        { name: "無糖饅頭", spec: "一包75元(5顆)", price: 75 },
+        { name: "全麥饅頭", spec: "一包75元(5顆)", price: 75 },
+        { name: "芝麻饅頭", spec: "一包90元(5顆)", price: 90 },
+        { name: "抹茶紅豆饅頭", spec: "一包125元(5顆)", price: 125 },
+        { name: "五穀雜糧饅頭", spec: "一包150元(5顆)", price: 150 },
+        { name: "雙料起司卷", spec: "一包150元(5顆)", price: 150 },
+        { name: "五穀雜糧小饅頭 (10入)", spec: "一包65元(10顆)", price: 65 },
+        { name: "小饅頭 (10入)", spec: "一包50元(10顆)", price: 50 }
+    ];
+
+    const tbody = document.getElementById('product-list');
+    products.forEach((prod, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${prod.name}</strong></td>
+            <td style="font-size:0.85em; color:#7f8c8d;">${prod.spec}</td>
+            <td class="price-tag">NT$ ${prod.price}</td>
+            <td style="text-align: center;">
+                <input type="number" class="qty-input" id="qty-${index}" min="0" value="0" onchange="calculateTotal()">
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    function calculateTotal() {
+        let totalQty = 0;
+        let totalPrice = 0;
+        products.forEach((prod, index) => {
+            const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+            if (qty > 0) {
+                totalQty += qty;
+                totalPrice += qty * prod.price;
+            }
+        });
+        document.getElementById('total-qty').innerText = totalQty;
+        document.getElementById('total-price').innerText = totalPrice;
+    }
+
+    function submitOrder(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('name').value;
+        let itemsPayload = [];
+        let modalDetails = [];
+        let totalQty = 0;
+        let totalPrice = 0;
+
+        products.forEach((prod, index) => {
+            const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+            if (qty > 0) {
+                const subTotal = qty * prod.price;
+                
+                // 1. 為了讓 GAS 能夠一筆一筆分行寫入，我們傳送細緻的結構資料
+                itemsPayload.push({
+                    itemName: prod.name,
+                    itemQty: qty,
+                    itemPrice: subTotal
+                });
+
+                // 2. 這是網頁彈出視窗要秀給使用者看的格式
+                modalDetails.push(`${prod.name} x ${qty}包`);
+                
+                totalQty += qty;
+                totalPrice += subTotal;
+            }
+        });
+
+        if (totalQty === 0) {
+            alert('請至少選擇一項商品再進行下單！');
+            return;
+        }
+
+        // 鎖定送出按鈕防止重複點擊
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "訂單傳送中，請稍候...";
+
+        // 整理傳送給 Google Sheet 的資料結構
+        const payload = {
+            name: name,
+            items: itemsPayload
+        };
+
+        // 使用 fetch API 發送 POST 請求
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.result === 'success') {
+                // 1. 將訂購資料塞入彈出視窗中
+                document.getElementById('confirm-name').innerText = name;
+                document.getElementById('confirm-qty').innerText = totalQty;
+                document.getElementById('confirm-price').innerText = totalPrice;
+                
+                const detailsUl = document.getElementById('confirm-details');
+                detailsUl.innerHTML = ''; // 清空舊資料
+                modalDetails.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerText = item;
+                    detailsUl.appendChild(li);
+                });
+
+                // 2. 顯示彈出視窗
+                document.getElementById('successModal').style.display = 'flex';
+
+                // 3. 重設表單與計算金額
+                document.getElementById('orderForm').reset();
+                calculateTotal();
+            } else {
+                alert('寫入失敗，請聯絡主揪！錯誤原因：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('連線失敗，請確認 GAS 部署設定是否設為「任何人」都可以存取。');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "確認送出訂單";
+        });
+    }
+
+    // 關閉彈出視窗
+    function closeModal() {
+        document.getElementById('successModal').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>

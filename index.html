@@ -241,19 +241,37 @@
             background-color: #d35400;
         }
 
-        /* 手機板版面微調 */
+        /* 📱 手機板版面微調 */
         @media (max-width: 600px) {
             th, td {
                 padding: 8px 4px; 
-                font-size: 0.9em;
+                font-size: 0.85em;
             }
+            /* 1. 名稱欄位：自動調整其餘寬度 */
+            td:nth-child(1) {
+                font-weight: bold;
+            }
+            /* 2. 規格欄位：限制寬度並縮小字體 */
             td:nth-child(2) {
-                font-size: 0.75em !important; /* 讓規格字體在手機上稍微縮小，避免排版擠壓 */
-                min-width: 45px; /* 給予規格欄位足夠的基本空間 */
+                font-size: 0.75em !important; 
+                min-width: 45px;
+                max-width: 60px;
+                color: #7f8c8d;
+            }
+            /* 3. 價格欄位：【這裡就是控制手機版價格寬度的地方】 */
+            td:nth-child(3) {
+                min-width: 70px; /* 固定價格欄位的最小寬度 */
+                white-space: nowrap; /* 避免價格斷行 */
+            }
+            /* 4. 數量欄位 */
+            td:nth-child(4) {
+                min-width: 60px;
+                text-align: center;
             }
             .qty-input {
-                width: 85px; /* 手機版輸入框稍微變窄 */
+                width: 50px; /* 手機版輸入框縮窄，挪出寬度給價格與規格 */
                 padding: 4px;
+                font-size: 0.9em;
             }
             .floating-counter {
                 bottom: 20px;
@@ -294,7 +312,7 @@
                 </tr>
             </thead>
             <tbody id="product-list">
-                </tbody>
+            </tbody>
         </table>
 
         <div id="submit-section" class="section-title">Step 3. 確認並送出</div>

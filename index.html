@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>包子饅頭 - 團購下單系統</title>
+    <title>美味包子饅頭 - 團購下單系統</title>
     <style>
         :root {
             --primary-color: #e67e22;
@@ -18,6 +18,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px;
+            padding-bottom: 80px; /* 留白避免內容被底部懸浮條遮擋 */
         }
 
         .container {
@@ -136,6 +137,40 @@
             cursor: not-allowed;
         }
 
+        /* 📱 懸浮總金額小視窗樣式 */
+        .floating-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+            font-size: 1em;
+            font-weight: bold;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s, background-color 0.3s;
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        .floating-counter:hover {
+            background-color: #d35400;
+            transform: scale(1.05);
+        }
+
+        .floating-counter .badge {
+            background-color: white;
+            color: var(--primary-color);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
         /* 彈出視窗 (Modal) 樣式 */
         .modal {
             display: none;
@@ -209,14 +244,26 @@
             th:nth-child(2), td:nth-child(2) {
                 display: none;
             }
+            .floating-counter {
+                bottom: 15px;
+                right: 15px;
+                padding: 10px 16px;
+                font-size: 0.9em;
+            }
         }
     </style>
 </head>
 <body>
 
+<div class="floating-counter" onclick="scrollToSubmit()">
+    <span>已選 <span id="float-qty" class="badge">0</span> 包</span>
+    <span>|</span>
+    <span>共 NT$ <span id="float-price">0</span></span>
+</div>
+
 <div class="container">
     <h1>手工包子饅頭團購單</h1>
-    <p class="subtitle">店名:鄉品包子。 填妥下方數量後即可送出訂單。</p>
+    <p class="subtitle">新鮮現做、美味衛生！填妥下方數量後即可送出訂單。</p>
 
     <form id="orderForm" onsubmit="submitOrder(event)">
         <div class="section-title">Step 1. 填寫訂購人資訊</div>
@@ -239,6 +286,7 @@
                 </tbody>
         </table>
 
+        <div id="submit-section" class="section-title">Step 3. 確認並送出</div>
         <div class="summary-box">
             總計共 <span id="total-qty">0</span> 包，
             應付總金額：<span class="total-amount">NT$ <span id="total-price">0</span></span>
@@ -301,6 +349,11 @@
         tbody.appendChild(row);
     });
 
+    // 點擊懸浮窗自動平滑滾動到最下方
+    function scrollToSubmit() {
+        document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
     function calculateTotal() {
         let totalQty = 0;
         let totalPrice = 0;
@@ -311,8 +364,14 @@
                 totalPrice += qty * prod.price;
             }
         });
+        
+        // 更新底部的總計
         document.getElementById('total-qty').innerText = totalQty;
         document.getElementById('total-price').innerText = totalPrice;
+
+        // 同步更新右下角隨時浮動的總計
+        document.getElementById('float-qty').innerText = totalQty;
+        document.getElementById('float-price').innerText = totalPrice;
     }
 
     function submitOrder(event) {
@@ -329,14 +388,12 @@
             if (qty > 0) {
                 const subTotal = qty * prod.price;
                 
-                // 1. 為了讓 GAS 能夠一筆一筆分行寫入，我們傳送細緻的結構資料
                 itemsPayload.push({
                     itemName: prod.name,
                     itemQty: qty,
                     itemPrice: subTotal
                 });
 
-                // 2. 這是網頁彈出視窗要秀給使用者看的格式
                 modalDetails.push(`${prod.name} x ${qty}包`);
                 
                 totalQty += qty;
@@ -349,18 +406,15 @@
             return;
         }
 
-        // 鎖定送出按鈕防止重複點擊
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerText = "訂單傳送中，請稍候...";
 
-        // 整理傳送給 Google Sheet 的資料結構
         const payload = {
             name: name,
             items: itemsPayload
         };
 
-        // 使用 fetch API 發送 POST 請求
         fetch(GAS_WEB_APP_URL, {
             method: 'POST',
             body: JSON.stringify(payload),
@@ -371,23 +425,20 @@
         .then(response => response.json())
         .then(data => {
             if (data.result === 'success') {
-                // 1. 將訂購資料塞入彈出視窗中
                 document.getElementById('confirm-name').innerText = name;
                 document.getElementById('confirm-qty').innerText = totalQty;
                 document.getElementById('confirm-price').innerText = totalPrice;
                 
                 const detailsUl = document.getElementById('confirm-details');
-                detailsUl.innerHTML = ''; // 清空舊資料
+                detailsUl.innerHTML = '';
                 modalDetails.forEach(item => {
                     const li = document.createElement('li');
                     li.innerText = item;
                     detailsUl.appendChild(li);
                 });
 
-                // 2. 顯示彈出視窗
                 document.getElementById('successModal').style.display = 'flex';
 
-                // 3. 重設表單與計算金額
                 document.getElementById('orderForm').reset();
                 calculateTotal();
             } else {
@@ -404,7 +455,6 @@
         });
     }
 
-    // 關閉彈出視窗
     function closeModal() {
         document.getElementById('successModal').style.display = 'none';
     }

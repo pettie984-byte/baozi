@@ -129,7 +129,20 @@ th{
     color:var(--primary-color);
 }
 
-/* 🟢 加減按鈕控制組 */
+/* 🟢 規格加大 */
+.spec-col {
+    font-size: 1.1em;
+    color: #555;
+}
+
+/* 🟢 金額加大 */
+.price-tag{
+    color:#c0392b;
+    font-weight:bold;
+    font-size: 1.15em;
+}
+
+/* 🟢 數量控制組：微調縮小 */
 .qty-control {
     display: inline-flex;
     align-items: center;
@@ -137,12 +150,12 @@ th{
     border-radius: 6px;
     overflow: hidden;
     background: #fff;
-    width: 110px;
-    height: 34px;
+    width: 105px;
+    height: 32px;
 }
 
 .qty-btn {
-    width: 32px;
+    width: 30px;
     height: 100%;
     background: #fdf5ec;
     border: none;
@@ -167,9 +180,9 @@ th{
     cursor: not-allowed;
 }
 
-/* 🟢 優化後的手機純數字輸入框（無微調箭頭，不變形） */
+/* 🟢 手機防變形純數字輸入框：微調縮小 */
 .qty-input{
-    width: 46px;
+    width: 45px;
     height: 100%;
     border: none;
     border-left: 1px solid #eee;
@@ -185,11 +198,6 @@ th{
 
 .qty-input:focus {
     outline: none;
-}
-
-.price-tag{
-    color:#c0392b;
-    font-weight:bold;
 }
 
 .summary-box{
@@ -329,21 +337,28 @@ button.submit-btn:disabled{
     width:100%;
 }
 
-/* 手機版排版微調，避免欄位擠壓變形 */
+/* 手機版排版微調，確保欄位比例合適 */
 @media (max-width: 600px) {
     th, td {
         padding: 8px 4px;
         font-size: 0.9em;
     }
     .qty-control {
-        width: 100px;
-        height: 30px;
+        width: 90px;
+        height: 28px;
     }
     .qty-btn {
-        width: 28px;
+        width: 25px;
     }
     .qty-input {
-        width: 44px;
+        width: 40px;
+        font-size: 0.9em;
+    }
+    .spec-col {
+        font-size: 1em;
+    }
+    .price-tag {
+        font-size: 1.05em;
     }
 }
 
@@ -420,10 +435,10 @@ button.submit-btn:disabled{
             <thead>
 
                 <tr>
-                    <th>商品</th>
-                    <th>規格</th>
-                    <th>價格</th>
-                    <th>數量</th>
+                    <th style="width: 35%;">商品</th>
+                    <th style="width: 25%;">規格</th>
+                    <th style="width: 20%;">價格</th>
+                    <th style="width: 20%;">數量</th>
                 </tr>
 
             </thead>
@@ -581,7 +596,7 @@ function loadData(){
 
 
 // =========================================
-// 顯示商品（加入 + 與 - 按鈕元件）
+// 顯示商品（已整合 + 與 - 按鈕）
 // =========================================
 
 function renderProducts(){
@@ -601,7 +616,7 @@ function renderProducts(){
                 <strong>${prod.name}</strong>
             </td>
 
-            <td>
+            <td class="spec-col">
                 ${prod.spec || ""}
             </td>
 
@@ -636,7 +651,7 @@ function renderProducts(){
 
 
 // =========================================
-// 🟢 加減按鈕控制函式
+// 🟢 加減按鈕點擊控制
 // =========================================
 
 function changeQty(index, change) {
@@ -651,22 +666,19 @@ function changeQty(index, change) {
 
 
 // =========================================
-// 🟢 手動輸入防呆與即時試算
+// 🟢 輸入框防呆與即時計算
 // =========================================
 
 function validateAndCalculate(index) {
     const input = document.getElementById(`qty-${index}`);
-    // 只保留數字，過濾掉英文字母或小數點，防止手機輸入法bug
+    // 只保留純數字，過濾掉任何文字、小數點或負號
     input.value = input.value.replace(/[^0-9]/g, '');
-    if (input.value === "") {
-        // 空白時先不要強行帶入 0，方便使用者打字，但計算時當作 0
-    }
     calculateTotal();
 }
 
 
 // =========================================
-// 更新狀態（一併控制按鈕開關）
+// 更新狀態
 // =========================================
 
 function updateUIStatus(
@@ -690,7 +702,7 @@ function updateUIStatus(
 
     const qtyInputs =
         document.querySelectorAll(".qty-input");
-        
+
     const qtyBtns = 
         document.querySelectorAll(".qty-btn");
 
@@ -709,371 +721,3 @@ function updateUIStatus(
     else if(isActive){
 
         badge.className =
-            "status-badge active";
-
-        badge.innerText =
-            "進行中";
-
-        msg.innerHTML =
-            `截止時間：${endDate}`;
-
-        nameInput.disabled = false;
-
-        submitBtn.disabled = false;
-
-        qtyInputs.forEach(
-            input => input.disabled = false
-        );
-        
-        qtyBtns.forEach(
-            btn => btn.disabled = false
-        );
-
-        document.getElementById(
-            "floating-widget"
-        ).style.display = "flex";
-
-    }
-    else{
-
-        badge.className =
-            "status-badge closed";
-
-        badge.innerText =
-            "已結束";
-
-        msg.innerHTML =
-            `本團已截止`;
-
-    }
-
-}
-
-
-// =========================================
-// 計算總價（已加入「懸浮視窗規格」顯示）
-// =========================================
-
-function calculateTotal(){
-
-    let totalQty = 0;
-
-    let totalPrice = 0;
-
-    let selectedDetails = [];
-
-    products.forEach((prod,index)=>{
-
-        const qty =
-            parseInt(
-                document.getElementById(
-                    `qty-${index}`
-                ).value
-            ) || 0;
-
-        if(qty > 0){
-
-            totalQty += qty;
-
-            totalPrice += qty * prod.price;
-
-            const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
-            selectedDetails.push(
-                `${displayName} x ${qty}`
-            );
-
-        }
-
-    });
-
-    document.getElementById(
-        "total-qty"
-    ).innerText = totalQty;
-
-    document.getElementById(
-        "total-price"
-    ).innerText =
-        totalPrice.toLocaleString();
-
-    document.getElementById(
-        "float-qty"
-    ).innerText = totalQty;
-
-    document.getElementById(
-        "float-price"
-    ).innerText =
-        totalPrice.toLocaleString();
-
-    const detailBox =
-        document.getElementById(
-            "float-details-list"
-        );
-
-    if(selectedDetails.length > 0){
-
-        detailBox.innerHTML =
-            selectedDetails.join("<br>");
-
-        detailBox.style.display =
-            "block";
-
-    }else{
-
-        detailBox.style.display =
-            "none";
-
-    }
-
-}
-
-
-// =========================================
-// 送出訂單
-// =========================================
-
-document
-.getElementById("orderForm")
-.addEventListener(
-    "submit",
-    submitOrder
-);
-
-function submitOrder(event){
-
-    event.preventDefault();
-
-    const name =
-        document.getElementById("name")
-        .value
-        .trim();
-
-    if(!name){
-
-        alert("請輸入姓名");
-
-        return;
-
-    }
-
-    let items = [];
-
-    let totalQty = 0;
-
-    let totalPrice = 0;
-
-    products.forEach((prod,index)=>{
-
-        const qty =
-            parseInt(
-                document.getElementById(
-                    `qty-${index}`
-                ).value
-            ) || 0;
-
-        if(qty > 0){
-
-            const subtotal =
-                qty * prod.price;
-
-            items.push({
-
-                name: prod.name,
-
-                spec: prod.spec || "",
-
-                qty: qty,
-
-                price: prod.price,
-
-                subtotal: subtotal
-
-            });
-
-            totalQty += qty;
-
-            totalPrice += subtotal;
-
-        }
-
-    });
-
-    if(items.length === 0){
-
-        alert("請至少選一項商品");
-
-        return;
-
-    }
-
-    const submitBtn =
-        document.getElementById(
-            "submitBtn"
-        );
-
-    submitBtn.disabled = true;
-
-    submitBtn.innerText =
-        "送出中...";
-
-    const payload = {
-
-        name: name,
-
-        totalQty: totalQty,
-
-        totalPrice: totalPrice,
-
-        items: items
-
-    };
-
-    console.log(payload);
-
-    fetch(GAS_WEB_APP_URL,{
-
-        method:"POST",
-
-        headers:{
-            "Content-Type":
-            "text/plain;charset=utf-8"
-        },
-
-        body: JSON.stringify(payload)
-
-    })
-
-    .then(response => response.text())
-
-    .then(text => {
-
-        console.log(text);
-
-        showSuccessModal(name);
-
-        resetForm();
-
-    })
-
-    .catch(err => {
-
-        console.error(err);
-
-        showSuccessModal(name);
-
-        resetForm();
-
-    })
-
-    .finally(()=>{
-
-        submitBtn.disabled = false;
-
-        submitBtn.innerText =
-            "確認送出訂單";
-
-    });
-
-}
-
-
-// =========================================
-// 成功視窗
-// =========================================
-
-function showSuccessModal(name){
-
-    document.getElementById(
-        "confirm-name"
-    ).innerText = name;
-
-    const details =
-        document.getElementById(
-            "confirm-details"
-        );
-
-    details.innerHTML = "";
-
-    let totalQty = 0;
-
-    let totalPrice = 0;
-
-    products.forEach((prod,index)=>{
-
-        const qty =
-            parseInt(
-                document.getElementById(
-                    `qty-${index}`
-                ).value
-            ) || 0;
-
-        if(qty > 0){
-
-            totalQty += qty;
-
-            totalPrice += qty * prod.price;
-
-            const li =
-                document.createElement("li");
-
-            const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
-
-            li.innerHTML =
-                `<strong>${displayName}</strong> x <span style="color:#e67e22; font-weight:bold;">${qty}</span>`;
-
-            details.appendChild(li);
-
-        }
-
-    });
-
-    document.getElementById(
-        "confirm-qty"
-    ).innerText = totalQty;
-
-    document.getElementById(
-        "confirm-price"
-    ).innerText =
-        totalPrice.toLocaleString();
-
-    document.getElementById(
-        "successModal"
-    ).style.display = "flex";
-
-}
-
-
-// =========================================
-
-function closeModal(){
-
-    document.getElementById(
-        "successModal"
-    ).style.display = "none";
-
-}
-
-
-// =========================================
-
-function resetForm(){
-
-    document.getElementById(
-        "name"
-    ).value = "";
-
-    products.forEach((p,index)=>{
-
-        document.getElementById(
-            `qty-${index}`
-        ).value = 0;
-
-    });
-
-    calculateTotal();
-
-}
-
-</script>
-
-</body>
-</html>

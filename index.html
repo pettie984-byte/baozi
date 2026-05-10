@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>團購下單網</title>
 
@@ -116,12 +116,14 @@ table{
     width:100%;
     border-collapse:collapse;
     margin-bottom:25px;
+    table-layout: fixed; /* 固定列寬，防止手機版寬度被內容撐開變形 */
 }
 
 th,td{
-    padding:12px 10px;
+    padding:12px 8px;
     text-align:left;
     border-bottom:1px solid #eee;
+    word-break: break-all; /* 防止長文字撐破版面 */
 }
 
 th{
@@ -129,17 +131,80 @@ th{
     color:var(--primary-color);
 }
 
-.qty-input{
-    width:60px;
-    padding:6px;
-    border:1px solid #ccc;
-    border-radius:4px;
-    text-align:center;
+/* 🟢 規格欄位加寬樣式 */
+.spec-col {
+    font-size: 1.1em;
+    font-weight: 500;
+    color: #34495e;
 }
 
+/* 🟢 金額欄位加寬與放大樣式 */
 .price-tag{
     color:#c0392b;
     font-weight:bold;
+    font-size: 1.15em;
+}
+
+/* 🟢 數量欄位包裝：極致縮小與防止變形 */
+.qty-container {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    width: 90px;
+    height: 32px;
+}
+
+/* 🟢 增減按鈕樣式 */
+.qty-btn {
+    width: 28px;
+    height: 100%;
+    background-color: #fdf5ec;
+    border: none;
+    color: var(--primary-color);
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.qty-btn:hover:not(:disabled) {
+    background-color: #f3d9c2;
+}
+
+.qty-btn:disabled {
+    background-color: #eee;
+    color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+/* 🟢 輸入框樣式：純數字防變形 */
+.qty-input{
+    width: 34px;
+    height: 100%;
+    border: none;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    text-align: center;
+    font-size: 1em;
+    font-weight: bold;
+    padding: 0;
+    box-sizing: border-box;
+    border-radius: 0;
+}
+
+.qty-input:focus {
+    outline: none;
+}
+
+.qty-input:disabled {
+    background-color: #f9f9f9;
 }
 
 .summary-box{
@@ -279,6 +344,38 @@ button.submit-btn:disabled{
     width:100%;
 }
 
+/* RWD 手機版優化 */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 15px;
+    }
+    th, td {
+        padding: 10px 4px;
+        font-size: 0.88em;
+    }
+    .qty-container {
+        width: 80px;
+        height: 28px;
+    }
+    .qty-btn {
+        width: 24px;
+        font-size: 1em;
+    }
+    .qty-input {
+        width: 32px;
+        font-size: 0.9em;
+    }
+    .spec-col {
+        font-size: 0.95em;
+    }
+    .price-tag {
+        font-size: 1em;
+    }
+}
+
 </style>
 </head>
 
@@ -348,6 +445,8 @@ button.submit-btn:disabled{
         </div>
 
         <table>
+            <colgroup>
+                <col style="width: 25%;"> <col style="width: 30%;"> <col style="width: 25%;"> <col style="width: 20%;"> </colgroup>
 
             <thead>
 
@@ -533,7 +632,7 @@ function renderProducts(){
                 <strong>${prod.name}</strong>
             </td>
 
-            <td>
+            <td class="spec-col">
                 ${prod.spec || ""}
             </td>
 
@@ -542,17 +641,22 @@ function renderProducts(){
             </td>
 
             <td>
-
-                <input
-                    type="number"
-                    min="0"
-                    value="0"
-                    class="qty-input"
-                    id="qty-${index}"
-                    oninput="calculateTotal()"
-                    disabled
-                >
-
+                <div class="qty-container">
+                    <button type="button" class="qty-btn btn-dec" id="btn-dec-${index}" onclick="stepQty(${index}, -1)" disabled>−</button>
+                    
+                    <input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        value="0"
+                        class="qty-input"
+                        id="qty-${index}"
+                        oninput="validateAndCalculate(${index})"
+                        disabled
+                    >
+                    
+                    <button type="button" class="qty-btn btn-inc" id="btn-inc-${index}" onclick="stepQty(${index}, 1)" disabled>+</button>
+                </div>
             </td>
 
         `;
@@ -561,6 +665,36 @@ function renderProducts(){
 
     });
 
+}
+
+
+// =========================================
+// 🟢 按鈕加減運算
+// =========================================
+
+function stepQty(index, offset) {
+    const input = document.getElementById(`qty-${index}`);
+    let currentVal = parseInt(input.value, 10) || 0;
+    let newVal = currentVal + offset;
+    
+    if (newVal < 0) {
+        newVal = 0;
+    }
+    
+    input.value = newVal;
+    calculateTotal();
+}
+
+
+// =========================================
+// 🟢 輸入框防變形、防呆純數字輸入與計算
+// =========================================
+
+function validateAndCalculate(index) {
+    const input = document.getElementById(`qty-${index}`);
+    // 自動過濾非數字字元
+    input.value = input.value.replace(/[^0-9]/g, '');
+    calculateTotal();
 }
 
 
@@ -589,6 +723,9 @@ function updateUIStatus(
 
     const qtyInputs =
         document.querySelectorAll(".qty-input");
+
+    const qtyButtons =
+        document.querySelectorAll(".qty-btn");
 
     if(status === "尚未開始"){
 
@@ -621,6 +758,10 @@ function updateUIStatus(
             input => input.disabled = false
         );
 
+        qtyButtons.forEach(
+            btn => btn.disabled = false
+        );
+
         document.getElementById(
             "floating-widget"
         ).style.display = "flex";
@@ -643,7 +784,7 @@ function updateUIStatus(
 
 
 // =========================================
-// 計算總價（已加入「懸浮視窗規格」顯示）
+// 計算總價
 // =========================================
 
 function calculateTotal(){
@@ -660,7 +801,7 @@ function calculateTotal(){
             parseInt(
                 document.getElementById(
                     `qty-${index}`
-                ).value
+                ).value, 10
             ) || 0;
 
         if(qty > 0){
@@ -669,7 +810,6 @@ function calculateTotal(){
 
             totalPrice += qty * prod.price;
 
-            // 💡 判斷規格：如果商品有規格，就串接上規格，否則只顯示商品名稱
             const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
             selectedDetails.push(
                 `${displayName} x ${qty}`
@@ -760,7 +900,7 @@ function submitOrder(event){
             parseInt(
                 document.getElementById(
                     `qty-${index}`
-                ).value
+                ).value, 10
             ) || 0;
 
         if(qty > 0){
@@ -772,7 +912,7 @@ function submitOrder(event){
 
                 name: prod.name,
 
-                spec: prod.spec || "", // 確保規格欄位存在
+                spec: prod.spec || "",
 
                 qty: qty,
 
@@ -851,7 +991,6 @@ function submitOrder(event){
 
         console.error(err);
 
-        // GAS 很常已寫入成功但 fetch 被擋，保險起見仍彈出視窗
         showSuccessModal(name);
 
         resetForm();
@@ -871,7 +1010,7 @@ function submitOrder(event){
 
 
 // =========================================
-// 成功視窗（已加入「成功視窗規格」顯示）
+// 成功視窗
 // =========================================
 
 function showSuccessModal(name){
@@ -897,7 +1036,7 @@ function showSuccessModal(name){
             parseInt(
                 document.getElementById(
                     `qty-${index}`
-                ).value
+                ).value, 10
             ) || 0;
 
         if(qty > 0){
@@ -909,7 +1048,6 @@ function showSuccessModal(name){
             const li =
                 document.createElement("li");
 
-            // 💡 判斷規格：如果商品有規格，成功彈出視窗也會加上規格
             const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
 
             li.innerHTML =

@@ -155,11 +155,12 @@ th{
     background: #fff;
     width: 110px; /* 從 90px 增加到 110px */
     height: 34px;
+    box-sizing: border-box;
 }
 
 /* 🟢 增減按鈕樣式：加大寬度與字型 */
 .qty-btn {
-    width: 38px; /* 從 28px 放大到 38px */
+    width: 42px; /* 從 38px 放大到 42px，增加按壓面積 */
     height: 100%;
     background-color: #fdf5ec;
     border: none;
@@ -186,7 +187,7 @@ th{
 
 /* 🟢 輸入框樣式：縮小中間數字欄位 */
 .qty-input{
-    width: 30px; /* 從 34px 縮小到 30px */
+    width: 26px; /* 從 30px 再微調縮小到 26px，完美符合極限尺寸 */
     height: 100%;
     border: none;
     border-left: 1px solid #eee;
@@ -197,6 +198,7 @@ th{
     padding: 0;
     box-sizing: border-box;
     border-radius: 0;
+    background: #fff;
 }
 
 .qty-input:focus {
@@ -370,27 +372,30 @@ button.submit-btn:disabled{
         padding: 15px;
     }
     th, td {
-        padding: 10px 4px;
-        font-size: 0.88em;
+        padding: 10px 2px; /* 稍微縮小內縮，留給數量控制項更多空間 */
+        font-size: 0.85em;
+    }
+    table {
+        table-layout: auto; /* 手機版交給瀏覽器自動分配，避免欄位被壓縮 */
     }
     /* 手機版同步等比例微調，維持大按鈕好按的特性 */
     .qty-container {
-        width: 94px;
-        height: 30px;
+        width: 86px; /* 縮小整體外框，防跑版 */
+        height: 32px;
     }
     .qty-btn {
-        width: 32px;
+        width: 31px; /* 按鈕寬度 31px */
         font-size: 1.2em;
     }
     .qty-input {
-        width: 28px;
-        font-size: 0.95em;
+        width: 24px; /* 中間數字白色區縮小至 24px */
+        font-size: 0.9em;
     }
     .spec-col {
-        font-size: 0.95em;
+        font-size: 0.85em;
     }
     .price-tag {
-        font-size: 1em;
+        font-size: 0.9em;
     }
 }
 
@@ -464,7 +469,11 @@ button.submit-btn:disabled{
 
         <table>
             <colgroup>
-                <col style="width: 25%;"> <col style="width: 30%;"> <col style="width: 25%;"> <col style="width: 20%;"> </colgroup>
+                <col style="width: 30%;"> 
+                <col style="width: 25%;"> 
+                <col style="width: 20%;"> 
+                <col style="width: 25%;"> 
+            </colgroup>
 
             <thead>
 
@@ -1070,36 +1079,29 @@ function submitOrder(event){
         body: JSON.stringify(payload)
 
     })
-
-    .then(response => response.text())
-
+    // 🟢 這裡修改：不強制前端解析 JSON，避免 GAS 回傳純文字 "success" 時發生 Unexpected token 錯誤
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("網路連線錯誤，無法送出訂單");
+        }
+        return response.text(); // 先轉成文字，容錯率更高
+    })
     .then(text => {
-
-        console.log(text);
-
+        console.log("伺服器回傳：", text);
         showSuccessModal(name);
-
         resetForm();
-
     })
-
     .catch(err => {
-
-        console.error(err);
-
-        showSuccessModal(name);
-
-        resetForm();
-
-    })
-
-    .finally(()=>{
-
+        console.error("發送失敗：", err);
+        // 🟢 即使 GAS 失敗，若它其實有寫入成功，我們仍提供視覺回饋，或者視你的 GAS 設計而定：
+        alert("訂單送出時發生問題，請確認是否成功：" + err.message);
         submitBtn.disabled = false;
-
+        submitBtn.innerText = "確認送出訂單";
+    })
+    .finally(()=>{
+        submitBtn.disabled = false;
         submitBtn.innerText =
             "確認送出訂單";
-
     });
 
 }

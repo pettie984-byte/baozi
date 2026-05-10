@@ -18,7 +18,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px;
-            padding-bottom: 100px; /* 留白避免內容被底部懸浮條遮擋 */
+            padding-bottom: 120px; /* 留白避免內容被底部懸浮條遮擋 */
         }
 
         .container {
@@ -144,32 +144,67 @@
             right: 30px;
             background-color: #e67e22 !important;
             color: white !important;
-            padding: 14px 24px;
-            border-radius: 50px;
+            padding: 12px 20px;
+            border-radius: 18px; /* 改為圓角矩形，更適合放多行明細 */
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            font-size: 1.1em;
-            font-weight: bold;
             z-index: 99999 !important; /* 確保懸浮在最上層 */
             display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: transform 0.2s, background-color 0.3s;
+            flex-direction: column; /* 讓明細排在總金額下方 */
+            align-items: flex-end; /* 內容靠右對齊 */
+            gap: 6px;
             cursor: pointer;
             border: 2px solid white;
+            max-width: 250px;
+            
+            /* 👇 為了讓滾動時隱藏/顯現更平滑，加入動畫效果 👇 */
+            transition: transform 0.2s, background-color 0.3s, opacity 0.3s ease, visibility 0.3s;
+            opacity: 1;
+            visibility: visible;
         }
 
         .floating-counter:hover {
             background-color: #d35400 !important;
-            transform: scale(1.05);
+            transform: scale(1.03);
+        }
+
+        /* 懸浮窗內的第一行（總計與金額） */
+        .float-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            width: 100%;
+            justify-content: space-between;
         }
 
         .floating-counter .badge {
             background-color: white;
             color: #e67e22;
-            padding: 2px 10px;
+            padding: 2px 8px;
             border-radius: 20px;
-            font-size: 0.95em;
+            font-size: 0.9em;
             font-weight: bold;
+        }
+
+        /* 懸浮窗內的品項明細樣式（字體較小） */
+        .float-details {
+            font-size: 0.75em; /* 字體縮小 */
+            color: rgba(255, 255, 255, 0.9); /* 半透明白，不搶眼 */
+            border-top: 1px solid rgba(255, 255, 255, 0.3); /* 分割線 */
+            padding-top: 6px;
+            width: 100%;
+            text-align: left;
+            line-height: 1.4;
+            max-height: 120px; /* 限制高度，品項太多時可滾動 */
+            overflow-y: auto;
+            display: none; /* 預設沒有品項時隱藏 */
+        }
+
+        .float-details div {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* 字數太多自動省略 */
         }
 
         /* 彈出視窗 (Modal) 樣式 */
@@ -247,47 +282,46 @@
                 padding: 8px 4px; 
                 font-size: 0.85em;
             }
-            /* 1. 名稱欄位：自動調整其餘寬度 */
             td:nth-child(1) {
                 font-weight: bold;
             }
-            /* 2. 規格欄位：限制寬度並縮小字體 */
             td:nth-child(2) {
                 font-size: 0.75em !important; 
                 min-width: 45px;
                 max-width: 60px;
                 color: #7f8c8d;
             }
-            /* 3. 價格欄位：【這裡就是控制手機版價格寬度的地方】 */
             td:nth-child(3) {
-                min-width: 70px; /* 固定價格欄位的最小寬度 */
-                white-space: nowrap; /* 避免價格斷行 */
+                min-width: 70px;
+                white-space: nowrap;
             }
-            /* 4. 數量欄位 */
             td:nth-child(4) {
                 min-width: 60px;
                 text-align: center;
             }
             .qty-input {
-                width: 50px; /* 手機版輸入框縮窄，挪出寬度給價格與規格 */
+                width: 50px;
                 padding: 4px;
                 font-size: 0.9em;
             }
             .floating-counter {
                 bottom: 20px;
                 right: 20px;
-                padding: 12px 18px;
-                font-size: 0.95em;
+                padding: 10px 15px;
+                font-size: 0.9em;
+                max-width: 200px;
             }
         }
     </style>
 </head>
 <body>
 
-<div class="floating-counter" onclick="scrollToSubmit()">
-    <span>已選 <span id="float-qty" class="badge">0</span> 包</span>
-    <span>|</span>
-    <span>共 NT$ <span id="float-price">0</span></span>
+<div id="floating-widget" class="floating-counter" onclick="scrollToSubmit()">
+    <div class="float-header">
+        <span>已選 <span id="float-qty" class="badge">0</span> 包</span>
+        <span>共 NT$ <span id="float-price">0</span></span>
+    </div>
+    <div id="float-details-list" class="float-details"></div>
 </div>
 
 <div class="container">
@@ -341,7 +375,6 @@
 </div>
 
 <script>
-    // 🔗 您的 Google Apps Script 網頁應用程式 URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     const products = [
@@ -378,19 +411,40 @@
         tbody.appendChild(row);
     });
 
-    // 點擊懸浮窗自動平滑滾動到最下方
     function scrollToSubmit() {
         document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // 監聽滾動事件：當滑動到最底部時隱藏懸浮窗
+    window.onscroll = function() {
+        const widget = document.getElementById('floating-widget');
+        
+        // 取得當前滾動高度、視窗高度、整個網頁的總高度
+        const scrollPosition = window.innerHeight + window.pageYOffset;
+        const totalHeight = document.documentElement.offsetHeight;
+        
+        // 如果滑動到距離底部小於 80px 的範圍，就淡出隱藏
+        if (totalHeight - scrollPosition < 80) {
+            widget.style.opacity = "0";
+            widget.style.visibility = "hidden";
+        } else {
+            widget.style.opacity = "1";
+            widget.style.visibility = "visible";
+        }
+    };
+
+    // 計算總計並更新懸浮窗明細
     function calculateTotal() {
         let totalQty = 0;
         let totalPrice = 0;
+        let selectedItemsHtml = ""; // 用於暫存懸浮窗明細的 HTML
+
         products.forEach((prod, index) => {
             const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
             if (qty > 0) {
                 totalQty += qty;
                 totalPrice += qty * prod.price;
+                selectedItemsHtml += `<div>${prod.name} x ${qty}</div>`;
             }
         });
         
@@ -401,6 +455,16 @@
         // 同步更新右下角隨時浮動的總計
         document.getElementById('float-qty').innerText = totalQty;
         document.getElementById('float-price').innerText = totalPrice;
+
+        // 更新右下角明細內容與顯示狀態
+        const detailsContainer = document.getElementById('float-details-list');
+        if (totalQty > 0) {
+            detailsContainer.innerHTML = selectedItemsHtml;
+            detailsContainer.style.display = "block"; // 有選商品時顯示明細
+        } else {
+            detailsContainer.innerHTML = "";
+            detailsContainer.style.display = "none";  // 沒選商品時隱藏明細
+        }
     }
 
     function submitOrder(event) {

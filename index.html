@@ -486,7 +486,7 @@
             // 🥳 進行中
             badge.className = "status-badge active";
             badge.innerText = "進行中";
-            msg.innerHTML = `本團開團時間：${startDate} ～ 截止到期日：<span class="deadline-highlight">${endDate}</span>。<br>想吃的朋友請抓緊時間填單唷！`;
+            msg.innerHTML = `本團開團時間：${startDate} ～ 截止到期日：<span class="deadline-highlight">${endDate}</span>。<br>想訂購的朋友請抓緊時間填單唷！`;
             
             // 解鎖輸入元件
             nameInput.disabled = false;
@@ -501,7 +501,7 @@
             // 🚫 已截止 / 尚未開始
             badge.className = "status-badge closed";
             badge.innerText = "已結束（已下單）";
-            msg.innerHTML = `<strong>本團已截止收單！到期日為：${endDate}</strong>。<br><span style="color: #c0392b;">主揪已正式向店家下單，請靜候取貨通知。</span>`;
+            msg.innerHTML = `<strong>本團已截止收單！到期日為：${endDate}</strong>。<br><span style="color: #c0392b;">主揪已正式向店家下單，請靜候通知。</span>`;
             
             // 保持鎖定
             nameInput.disabled = true;
@@ -607,9 +607,11 @@
         submitBtn.disabled = true;
         submitBtn.innerText = "訂單傳送中，請稍候...";
 
+        // 🔥 這裡進行了重要修正：改用 "\n" 換行來串接明細，不加上頓號。
+        // 這樣傳送到試算表時，儲存格就會完美辨識出多行，不再擠在同一行！
         const payload = {
             name: name,
-            details: orderDetails.join('、\n'),
+            details: orderDetails.join('\n'), 
             totalQty: totalQty,
             totalPrice: totalPrice
         };

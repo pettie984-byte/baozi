@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>團購下單系統</title> <style>
+    <title>團購下單系統</title>
+    <style>
         :root {
             --primary-color: #e67e22;
             --secondary-color: #f39c12;
@@ -198,7 +199,7 @@
             display: none;
         }
 
-        /* 彈出視窗 (Modal) 樣式 */
+        /* 彈出視窗 (Modal) */
         .modal {
             display: none;
             position: fixed;
@@ -296,7 +297,7 @@
 <div class="container">
     <h1 id="main-title">載入中...</h1>
     <p class="subtitle">
-        店名：鄉品包子。<br>
+        店名：<span id="shop-name">載入中...</span>。<br>
         填妥下方數量後即可送出訂單。
     </p>
 
@@ -352,13 +353,13 @@
 </div>
 
 <script>
-    // 🔗 請換成你的全新部署後產生的 GAS 網址
+    // 🔗 請替換成你全新部署後產生的 GAS 網頁應用程式 URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
     let isGroupBuyActive = false;
 
-    // 1. 網頁載入時直接向 GAS 請求最新開團設定與商品清單
+    // 1. 網頁載入時向 GAS 請求資料
     fetch(GAS_WEB_APP_URL)
     .then(response => response.json())
     .then(data => {
@@ -366,13 +367,13 @@
             products = data.products;
             isGroupBuyActive = data.isActive;
             
-            // 動態更新網頁頂部標題、瀏覽器頁籤 Title
+            // 動態更新標題
             document.title = data.groupName;
             document.getElementById('main-title').innerText = data.groupName;
+            document.getElementById('shop-name').innerText = data.groupName;
 
-            // 動態渲染商品清單
+            // 動態渲染商品與狀態
             renderProducts(products);
-            // 更新團購狀態與輸入框鎖定狀態
             updateUIStatus(data.startDate, data.endDate, data.isActive);
         } else {
             showErrorStatus("無法取得團購資料，請聯絡主揪。");
@@ -383,7 +384,6 @@
         showErrorStatus("網路連線失敗，無法取得團購時程。");
     });
 
-    // 動態渲染表格
     function renderProducts(productList) {
         const tbody = document.getElementById('product-list');
         tbody.innerHTML = '';
@@ -402,7 +402,6 @@
         });
     }
 
-    // 根據雲端狀態更新 UI 的輸入控制項
     function updateUIStatus(startDate, endDate, isActive) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -466,7 +465,6 @@
         }
     };
 
-    // 計算總金額與總包數
     function calculateTotal() {
         let totalQty = 0;
         let totalPrice = 0;
@@ -558,7 +556,6 @@
                 });
 
                 document.getElementById('successModal').style.display = 'flex';
-
                 document.getElementById('orderForm').reset();
                 calculateTotal();
             } else {

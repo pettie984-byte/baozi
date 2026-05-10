@@ -347,7 +347,7 @@
             <p><strong>訂購品項明細：</strong></p>
             <ul id="confirm-details"></ul>
             <div class="modal-total">
-                共 <span id="confirm-qty" style="color:#2c3e50;"></span> 包，總金額：NT$ <span id="confirm-price"></span> 元
+                共 <span id="confirm-qty" style="color:#2c3e50;"></span>，總金額：NT$ <span id="confirm-price"></span> 元
             </div>
         </div>
         <button class="close-btn" onclick="closeModal()">好的，我知道了</button>
@@ -536,7 +536,7 @@
                     subtotal: subtotal
                 });
                 // 2. 彈出確認視窗的顯示文字
-                orderDetailsForModal.push(`${prod.name} x ${qty}包`);
+                orderDetailsForModal.push(`${prod.name} x ${qty}`);
                 totalQty += qty;
                 totalPrice += subtotal;
             }

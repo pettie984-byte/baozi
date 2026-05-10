@@ -355,21 +355,19 @@
 </div>
 
 <script>
-    // 🔗 請務必確認此處為您在 GAS 重新部署「任何人都可存取」後產生的 Web App URL
+    // 🔗 請換成您在 GAS 部署產生的 Web App URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
     let isGroupBuyActive = false;
 
-    // 1. 網頁載入時向 GAS 請求資料
+    // 1. 網頁載入時取得資料
     fetch(GAS_WEB_APP_URL, {
         method: "GET",
         mode: "cors"
     })
     .then(response => {
-        if (!response.ok) {
-            throw new Error("HTTP 連線錯誤，狀態碼：" + response.status);
-        }
+        if (!response.ok) throw new Error("HTTP 錯誤狀態碼：" + response.status);
         return response.json();
     })
     .then(data => {
@@ -377,24 +375,19 @@
             products = data.products;
             isGroupBuyActive = data.isActive;
             
-            // 更新團購動態店名/名稱
             document.getElementById('shop-name').innerText = data.groupName + "。";
-
-            // 動態渲染商品
             renderProducts(products);
-            
-            // 更新狀態與按鈕可用度
             updateUIStatus(data.startDate, data.endDate, data.isActive, data.status);
         } else {
             showErrorStatus("無法取得團購資料，主揪後端訊息：" + (data.message || "未知原因"));
         }
     })
     .catch(error => {
-        console.error("Fetch Error 詳細資訊:", error);
-        showErrorStatus("網路連線失敗，無法取得團購時程（請確認您的 GAS 部署設定）。");
+        console.error("Fetch Error:", error);
+        showErrorStatus("網路連線失敗，無法取得團購時程。");
     });
 
-    // 2. 動態渲染商品清單
+    // 2. 動態渲染商品
     function renderProducts(productList) {
         const tbody = document.getElementById('product-list');
         tbody.innerHTML = '';
@@ -413,7 +406,7 @@
         });
     }
 
-    // 3. 更新 UI 的開團狀態 Banner 與輸入框權限
+    // 3. 更新介面狀態
     function updateUIStatus(startDate, endDate, isActive, calculatedStatus) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -424,44 +417,37 @@
         if (calculatedStatus === "尚未開始") {
             badge.className = "status-badge upcoming";
             badge.innerText = "尚未開始";
-            msg.innerHTML = `本團預計開團時間為：${startDate} ～ 截止時間為：${endDate}。<br>目前尚未開放填單，敬請期待！`;
+            msg.innerHTML = `本團預計開團時間為：${startDate} ～ 截止時間為：${endDate}。<br>目前尚未開放填單！`;
             
             nameInput.disabled = true;
-            nameInput.placeholder = "尚未開始，暫不開放填寫";
             submitBtn.disabled = true;
             submitBtn.innerText = "團購尚未開始";
             qtyInputs.forEach(input => input.disabled = true);
-            
             document.getElementById('floating-widget').style.display = 'none';
 
         } else if (isActive) {
             badge.className = "status-badge active";
             badge.innerText = "進行中";
-            msg.innerHTML = `本團開團時間：${startDate} ～ 截止到期日：<span class="deadline-highlight">${endDate}</span>。<br>想訂購的朋友請抓緊時間填單唷！`;
+            msg.innerHTML = `本團開團時間：${startDate} ～ 截止時間：<span class="deadline-highlight">${endDate}</span>。<br>想訂購的朋友請抓緊時間填單唷！`;
             
             nameInput.disabled = false;
-            nameInput.placeholder = "請輸入您的姓名";
             submitBtn.disabled = false;
             submitBtn.innerText = "確認送出訂單";
             qtyInputs.forEach(input => input.disabled = false);
-
             document.getElementById('floating-widget').style.display = 'flex';
         } else {
             badge.className = "status-badge closed";
             badge.innerText = "已結束";
-            msg.innerHTML = `<strong>本團已截止收單！到期日為：${endDate}</strong>。<br><span style="color: #c0392b;">主揪已正式向店家下單，請靜候通知。</span>`;
+            msg.innerHTML = `<strong>本團已截止收單！截止日為：${endDate}</strong>。<br><span style="color: #c0392b;">主揪已正式向店家下單，請靜候通知。</span>`;
             
             nameInput.disabled = true;
-            nameInput.placeholder = "團購已截止，不開放填寫";
             submitBtn.disabled = true;
             submitBtn.innerText = "團購已結束，暫停收單";
             qtyInputs.forEach(input => input.disabled = true);
-            
             document.getElementById('floating-widget').style.display = 'none';
         }
     }
 
-    // 4. 連線錯誤處理
     function showErrorStatus(errMsg) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -470,7 +456,7 @@
         msg.innerHTML = `<span style="color: #c0392b;">${errMsg}</span>`;
     }
 
-    // 5. 即時計算金額與件數
+    // 4. 計算合計
     function calculateTotal() {
         let totalQty = 0;
         let totalPrice = 0;
@@ -483,7 +469,6 @@
                 qtyInput.value = 0;
                 return;
             }
-
             if (qty > 0) {
                 totalQty += qty;
                 totalPrice += qty * prod.price;
@@ -491,11 +476,8 @@
             }
         });
 
-        // 更新本地總計
         document.getElementById('total-qty').innerText = totalQty;
         document.getElementById('total-price').innerText = totalPrice.toLocaleString();
-
-        // 更新懸浮小視窗
         document.getElementById('float-qty').innerText = totalQty;
         document.getElementById('float-price').innerText = totalPrice.toLocaleString();
 
@@ -509,29 +491,12 @@
         }
     }
 
-    // 6. 點擊懸浮小視窗平滑滾動至結帳區
     function scrollToSubmit() {
         if (!isGroupBuyActive) return;
         document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    window.onscroll = function() {
-        if (!isGroupBuyActive) return;
-
-        const widget = document.getElementById('floating-widget');
-        const scrollPosition = window.innerHeight + window.pageYOffset;
-        const totalHeight = document.documentElement.offsetHeight;
-        
-        if (totalHeight - scrollPosition < 80) {
-            widget.style.opacity = "0";
-            widget.style.visibility = "hidden";
-        } else {
-            widget.style.opacity = "1";
-            widget.style.visibility = "visible";
-        }
-    };
-
-    // 7. 送出訂單給 GAS 後端儲存 (🔥 採用安全穩定的 FormData 格式發送)
+    // 5. 🚀 傳送訂單（發送純 JSON 格式，搭配後端完美對接）
     function submitOrder(event) {
         event.preventDefault();
 
@@ -541,18 +506,26 @@
             return;
         }
 
-        let orderItems = [];
-        let hasItems = false;
+        let selectedItems = [];
+        let totalQty = 0;
+        let totalPrice = 0;
 
         products.forEach((prod, index) => {
             const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
             if (qty > 0) {
-                hasItems = true;
+                totalQty += qty;
+                totalPrice += qty * prod.price;
+                selectedItems.push({
+                    name: prod.name,
+                    spec: prod.spec,
+                    qty: qty,
+                    price: prod.price,
+                    subtotal: qty * prod.price
+                });
             }
-            orderItems.push(qty); 
         });
 
-        if (!hasItems) {
+        if (selectedItems.length === 0) {
             alert('請至少選擇一樣商品數量！');
             return;
         }
@@ -561,22 +534,23 @@
         submitBtn.disabled = true;
         submitBtn.innerText = '正在傳送訂單，請稍候...';
 
-        // 💡 使用 URLSearchParams 封裝資料，這在 GAS 的 doPost 中會對應到 e.parameter
-        const formData = new URLSearchParams();
-        formData.append('name', name);
-        formData.append('order', JSON.stringify(orderItems)); 
+        // 封裝成 JSON 結構
+        const payload = {
+            name: name,
+            totalQty: totalQty,
+            totalPrice: totalPrice,
+            items: selectedItems
+        };
 
         fetch(GAS_WEB_APP_URL, {
             method: 'POST',
-            body: formData,
+            body: JSON.stringify(payload),
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'text/plain;charset=utf-8' // 💡 使用 text/plain 避免複雜的 CORS Preflight 預檢請求
             }
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP 伺服器回傳錯誤: " + response.status);
-            }
+            if (!response.ok) throw new Error("伺服器回傳錯誤: " + response.status);
             return response.json();
         })
         .then(data => {
@@ -584,15 +558,13 @@
                 showSuccessModal(name);
                 resetForm();
             } else {
-                alert('伺服器錯誤：' + data.message);
+                alert('失敗：' + data.message);
             }
         })
         .catch(error => {
             console.error('Submit Error:', error);
-            // 💡 容錯機制：如果因為瀏覽器 Redirect 造成前端沒拿到 JSON 回應
-            // 但實測資料多數已成功寫入，仍彈出成功提示並清除表單。
-            showSuccessModal(name);
-            resetForm();
+            // 💡 備用安全提醒
+            alert('傳送發生異常，請向主揪確認後台是否已成功存入資料。');
         })
         .finally(() => {
             submitBtn.disabled = false;
@@ -600,10 +572,8 @@
         });
     }
 
-    // 8. 彈出 Modal 視窗與重設表單
     function showSuccessModal(orderName) {
         document.getElementById('confirm-name').innerText = orderName;
-        
         const detailsList = document.getElementById('confirm-details');
         detailsList.innerHTML = '';
         
@@ -623,7 +593,6 @@
 
         document.getElementById('confirm-qty').innerText = totalQty;
         document.getElementById('confirm-price').innerText = totalPrice.toLocaleString();
-        
         document.getElementById('successModal').style.display = 'flex';
     }
 

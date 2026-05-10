@@ -298,7 +298,7 @@
 <div class="container">
     <h1 id="main-title">載入中...</h1>
     <p class="subtitle">
-        團購名稱：<span id="shop-name">載入中...</span><br>
+        店名：<span id="shop-name">載入中...</span><br>
         填妥下方數量後即可送出訂單。
     </p>
 
@@ -321,7 +321,7 @@
                     <th>商品名稱</th>
                     <th>規格</th>
                     <th>價格</th>
-                    <th style="text-align: center;">數量</th>
+                    <th style="text-align: center;">數量 </th>
                 </tr>
             </thead>
             <tbody id="product-list">
@@ -354,7 +354,7 @@
 </div>
 
 <script>
-    // 🔗 請替換成您全新部署(新版本)後產生的 GAS 網頁應用程式 URL
+    // 🔗 請換上您最新部署(建新版本)後產生的 GAS 網頁應用程式 URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
@@ -368,7 +368,6 @@
             products = data.products;
             isGroupBuyActive = data.isActive;
             
-            // 💡 動態綁定：店名與網頁標題直接顯示試算表讀取到的 groupName
             document.title = data.groupName;
             document.getElementById('main-title').innerText = data.groupName;
             document.getElementById('shop-name').innerText = data.groupName + "。";
@@ -376,7 +375,7 @@
             // 動態渲染商品
             renderProducts(products);
             
-            // 更新狀態與按鈕 (完全由後端系統時間判斷)
+            // 更新狀態與按鈕
             updateUIStatus(data.startDate, data.endDate, data.isActive, data.status);
         } else {
             showErrorStatus("無法取得團購資料，請聯絡主揪。");
@@ -520,16 +519,26 @@
         }
 
         const name = document.getElementById('name').value;
-        let orderDetails = [];
+        let orderItems = [];  // 用來裝拆分的單一品項物件
+        let orderDetailsForModal = []; // 用來裝彈出視窗的文字顯示
         let totalQty = 0;
         let totalPrice = 0;
 
         products.forEach((prod, index) => {
             const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
             if (qty > 0) {
-                orderDetails.push(`${prod.name} x ${qty}包`);
+                const subtotal = qty * prod.price;
+                // 1. 準備寫入試算表每列的物件
+                orderItems.push({
+                    name: prod.name,
+                    qty: qty,
+                    price: prod.price,
+                    subtotal: subtotal
+                });
+                // 2. 彈出確認視窗的顯示文字
+                orderDetailsForModal.push(`${prod.name} x ${qty}包`);
                 totalQty += qty;
-                totalPrice += qty * prod.price;
+                totalPrice += subtotal;
             }
         });
 
@@ -542,9 +551,10 @@
         submitBtn.disabled = true;
         submitBtn.innerText = "訂單傳送中，請稍候...";
 
+        // 封裝成傳送給 GAS 的 Payload
         const payload = {
             name: name,
-            details: orderDetails.join('\n'), 
+            items: orderItems, // 陣列物件傳送
             totalQty: totalQty,
             totalPrice: totalPrice
         };
@@ -559,13 +569,14 @@
         .then(response => response.json())
         .then(data => {
             if (data.result === 'success') {
+                // 更新彈出確認視窗 UI
                 document.getElementById('confirm-name').innerText = name;
                 document.getElementById('confirm-qty').innerText = totalQty;
                 document.getElementById('confirm-price').innerText = totalPrice;
                 
                 const detailsUl = document.getElementById('confirm-details');
                 detailsUl.innerHTML = '';
-                orderDetails.forEach(item => {
+                orderDetailsForModal.forEach(item => {
                     const li = document.createElement('li');
                     li.innerText = item;
                     detailsUl.appendChild(li);

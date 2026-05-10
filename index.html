@@ -216,6 +216,7 @@ button.submit-btn:disabled{
     border-top:1px solid rgba(255,255,255,.3);
     padding-top:6px;
     display:none;
+    line-height:1.4;
 }
 
 /* Modal */
@@ -247,6 +248,16 @@ button.submit-btn:disabled{
     font-weight:bold;
     margin-bottom:15px;
     text-align:center;
+}
+
+.modal-body-content {
+    font-size: 1em;
+    line-height: 1.6;
+}
+
+.modal-body-content ul {
+    padding-left: 20px;
+    margin: 10px 0;
 }
 
 .modal-total{
@@ -383,8 +394,6 @@ button.submit-btn:disabled{
 
 </div>
 
-<!-- 成功視窗 -->
-
 <div id="successModal" class="modal">
 
     <div class="modal-content">
@@ -393,25 +402,26 @@ button.submit-btn:disabled{
             🎉 訂單送出成功
         </div>
 
-        <div>
+        <div class="modal-body-content">
 
             <p>
                 訂購人：
-                <span id="confirm-name"></span>
+                <span id="confirm-name" style="font-weight: bold;"></span>
             </p>
 
+            <p>訂購細節：</p>
             <ul id="confirm-details"></ul>
 
             <div class="modal-total">
 
                 共
-                <span id="confirm-qty"></span>
+                <span id="confirm-qty">0</span>
                 件
 
                 <br>
 
                 NT$
-                <span id="confirm-price"></span>
+                <span id="confirm-price">0</span>
 
             </div>
 
@@ -524,7 +534,7 @@ function renderProducts(){
             </td>
 
             <td>
-                ${prod.spec}
+                ${prod.spec || ""}
             </td>
 
             <td class="price-tag">
@@ -633,7 +643,7 @@ function updateUIStatus(
 
 
 // =========================================
-// 計算總價
+// 計算總價（已加入「懸浮視窗規格」顯示）
 // =========================================
 
 function calculateTotal(){
@@ -659,8 +669,10 @@ function calculateTotal(){
 
             totalPrice += qty * prod.price;
 
+            // 💡 判斷規格：如果商品有規格，就串接上規格，否則只顯示商品名稱
+            const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
             selectedDetails.push(
-                `${prod.name} x ${qty}`
+                `${displayName} x ${qty}`
             );
 
         }
@@ -760,7 +772,7 @@ function submitOrder(event){
 
                 name: prod.name,
 
-                spec: prod.spec,
+                spec: prod.spec || "", // 確保規格欄位存在
 
                 qty: qty,
 
@@ -839,9 +851,7 @@ function submitOrder(event){
 
         console.error(err);
 
-        // GAS 很常已寫入成功
-        // 但 fetch 被擋
-
+        // GAS 很常已寫入成功但 fetch 被擋，保險起見仍彈出視窗
         showSuccessModal(name);
 
         resetForm();
@@ -861,7 +871,7 @@ function submitOrder(event){
 
 
 // =========================================
-// 成功視窗
+// 成功視窗（已加入「成功視窗規格」顯示）
 // =========================================
 
 function showSuccessModal(name){
@@ -899,8 +909,11 @@ function showSuccessModal(name){
             const li =
                 document.createElement("li");
 
+            // 💡 判斷規格：如果商品有規格，成功彈出視窗也會加上規格
+            const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
+
             li.innerHTML =
-                `${prod.name} x ${qty}`;
+                `<strong>${displayName}</strong> x <span style="color:#e67e22; font-weight:bold;">${qty}</span>`;
 
             details.appendChild(li);
 

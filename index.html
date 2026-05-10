@@ -355,19 +355,19 @@
 </div>
 
 <script>
-    // 🔗 請換成您在 GAS 部署產生的 Web App URL
+    // 🔗 請務必將此網址替換成您在 GAS 部署後的 Web App 網址
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
     let isGroupBuyActive = false;
 
-    // 1. 網頁載入時取得資料
+    // 1. 初始化讀取資料
     fetch(GAS_WEB_APP_URL, {
         method: "GET",
         mode: "cors"
     })
     .then(response => {
-        if (!response.ok) throw new Error("HTTP 錯誤狀態碼：" + response.status);
+        if (!response.ok) throw new Error("HTTP 狀態碼：" + response.status);
         return response.json();
     })
     .then(data => {
@@ -384,10 +384,10 @@
     })
     .catch(error => {
         console.error("Fetch Error:", error);
-        showErrorStatus("網路連線失敗，無法取得團購時程。");
+        showErrorStatus("網路連線失敗，無法取得團購設定。");
     });
 
-    // 2. 動態渲染商品
+    // 2. 渲染商品清單
     function renderProducts(productList) {
         const tbody = document.getElementById('product-list');
         tbody.innerHTML = '';
@@ -406,7 +406,7 @@
         });
     }
 
-    // 3. 更新介面狀態
+    // 3. 更新開團狀態介面
     function updateUIStatus(startDate, endDate, isActive, calculatedStatus) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -456,7 +456,7 @@
         msg.innerHTML = `<span style="color: #c0392b;">${errMsg}</span>`;
     }
 
-    // 4. 計算合計
+    // 4. 即時試算總合
     function calculateTotal() {
         let totalQty = 0;
         let totalPrice = 0;
@@ -496,7 +496,7 @@
         document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // 5. 🚀 傳送訂單（發送純 JSON 格式，搭配後端完美對接）
+    // 5. 傳送 JSON 格式訂單 (相容 doPost JSON 解析)
     function submitOrder(event) {
         event.preventDefault();
 
@@ -534,7 +534,6 @@
         submitBtn.disabled = true;
         submitBtn.innerText = '正在傳送訂單，請稍候...';
 
-        // 封裝成 JSON 結構
         const payload = {
             name: name,
             totalQty: totalQty,
@@ -542,11 +541,13 @@
             items: selectedItems
         };
 
+        // 💡 使用 'text/plain;charset=utf-8' 作為 Content-Type，
+        // 能有效避開跨域預檢 (CORS preflight OPTIONS)，並成功讓 GAS 取得 postData！
         fetch(GAS_WEB_APP_URL, {
             method: 'POST',
             body: JSON.stringify(payload),
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8' // 💡 使用 text/plain 避免複雜的 CORS Preflight 預檢請求
+                'Content-Type': 'text/plain;charset=utf-8'
             }
         })
         .then(response => {
@@ -563,8 +564,7 @@
         })
         .catch(error => {
             console.error('Submit Error:', error);
-            // 💡 備用安全提醒
-            alert('傳送發生異常，請向主揪確認後台是否已成功存入資料。');
+            alert('傳送發生異常，請聯絡主揪確認後台。');
         })
         .finally(() => {
             submitBtn.disabled = false;

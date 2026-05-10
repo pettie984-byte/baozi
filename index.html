@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>團購下單系統</title>
+    <title>團購下單網</title>
     <style>
         :root {
             --primary-color: #e67e22;
@@ -34,6 +34,7 @@
             text-align: center;
             color: var(--primary-color);
             margin-bottom: 5px;
+            font-size: 2.2em;
         }
 
         .subtitle {
@@ -296,7 +297,7 @@
 </div>
 
 <div class="container">
-    <h1 id="main-title">載入中...</h1>
+    <h1 id="main-title">團購下單網</h1>
     <p class="subtitle">
         店名：<span id="shop-name">載入中...</span><br>
         填妥下方數量後即可送出訂單。
@@ -321,7 +322,7 @@
                     <th>商品名稱</th>
                     <th>規格</th>
                     <th>價格</th>
-                    <th style="text-align: center;">數量 </th>
+                    <th style="text-align: center;">數量</th>
                 </tr>
             </thead>
             <tbody id="product-list">
@@ -330,7 +331,7 @@
 
         <div id="submit-section" class="section-title">Step 3. 確認並送出</div>
         <div class="summary-box">
-            總計共 <span id="total-qty">0</span> 包，
+            總計共 <span id="total-qty">0</span> ，
             應付總金額：<span class="total-amount">NT$ <span id="total-price">0</span></span>
         </div>
 
@@ -346,7 +347,7 @@
             <p><strong>訂購品項明細：</strong></p>
             <ul id="confirm-details"></ul>
             <div class="modal-total">
-                共 <span id="confirm-qty" style="color:#2c3e50;"></span> ，總金額：NT$ <span id="confirm-price"></span> 元
+                共 <span id="confirm-qty" style="color:#2c3e50;"></span> 包，總金額：NT$ <span id="confirm-price"></span> 元
             </div>
         </div>
         <button class="close-btn" onclick="closeModal()">好的，我知道了</button>
@@ -354,7 +355,7 @@
 </div>
 
 <script>
-    // 🔗 請換上您最新部署(建新版本)後產生的 GAS 網頁應用程式 URL
+    // 🔗 請記得換上您重新部署後產生的 GAS 網頁應用程式 URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
@@ -368,8 +369,7 @@
             products = data.products;
             isGroupBuyActive = data.isActive;
             
-            document.title = data.groupName;
-            document.getElementById('main-title').innerText = data.groupName;
+            // 固定標題，僅更新動態店名 (由雲端開團名稱決定)
             document.getElementById('shop-name').innerText = data.groupName + "。";
 
             // 動態渲染商品

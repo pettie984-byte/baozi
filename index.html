@@ -67,6 +67,7 @@
         .status-badge.loading { background-color: #95a5a6; }
         .status-badge.active { background-color: #2ecc71; }
         .status-badge.closed { background-color: #e74c3c; }
+        .status-badge.upcoming { background-color: #f1c40f; color: #2c3e50; }
 
         .status-text { line-height: 1.6; }
         .deadline-highlight { color: #e67e22; font-weight: bold; }
@@ -297,7 +298,7 @@
 <div class="container">
     <h1 id="main-title">載入中...</h1>
     <p class="subtitle">
-        店名：<span id="shop-name">載入中...</span>。<br>
+        店名：<span id="shop-name">載入中...</span><br>
         填妥下方數量後即可送出訂單。
     </p>
 
@@ -353,7 +354,7 @@
 </div>
 
 <script>
-    // 🔗 請替換成你全新部署後產生的 GAS 網頁應用程式 URL
+    // 🔗 請替換成您全新部署(新版本)後產生的 GAS 網頁應用程式 URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
@@ -367,14 +368,16 @@
             products = data.products;
             isGroupBuyActive = data.isActive;
             
-            // 動態更新標題
+            // 💡 動態綁定：店名與網頁標題直接顯示試算表讀取到的 groupName
             document.title = data.groupName;
             document.getElementById('main-title').innerText = data.groupName;
-            document.getElementById('shop-name').innerText = data.groupName;
+            document.getElementById('shop-name').innerText = data.groupName + "。";
 
-            // 動態渲染商品與狀態
+            // 動態渲染商品
             renderProducts(products);
-            updateUIStatus(data.startDate, data.endDate, data.isActive);
+            
+            // 更新狀態與按鈕 (完全由後端系統時間判斷)
+            updateUIStatus(data.startDate, data.endDate, data.isActive, data.status);
         } else {
             showErrorStatus("無法取得團購資料，請聯絡主揪。");
         }
@@ -402,14 +405,27 @@
         });
     }
 
-    function updateUIStatus(startDate, endDate, isActive) {
+    function updateUIStatus(startDate, endDate, isActive, calculatedStatus) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
         const submitBtn = document.getElementById('submitBtn');
         const nameInput = document.getElementById('name');
         const qtyInputs = document.querySelectorAll('.qty-input');
 
-        if (isActive) {
+        if (calculatedStatus === "尚未開始") {
+            badge.className = "status-badge upcoming";
+            badge.innerText = "尚未開始";
+            msg.innerHTML = `本團預計開團時間為：${startDate} ～ 截止時間為：${endDate}。<br>目前尚未開放填單，敬請期待！`;
+            
+            nameInput.disabled = true;
+            nameInput.placeholder = "尚未開始，暫不開放填寫";
+            submitBtn.disabled = true;
+            submitBtn.innerText = "團購尚未開始";
+            qtyInputs.forEach(input => input.disabled = true);
+            
+            document.getElementById('floating-widget').style.display = 'none';
+
+        } else if (isActive) {
             badge.className = "status-badge active";
             badge.innerText = "進行中";
             msg.innerHTML = `本團開團時間：${startDate} ～ 截止到期日：<span class="deadline-highlight">${endDate}</span>。<br>想訂購的朋友請抓緊時間填單唷！`;

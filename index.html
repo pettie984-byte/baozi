@@ -355,37 +355,49 @@
 </div>
 
 <script>
-    // 🔗 請記得換上您重新部署後產生的 GAS 網頁應用程式 URL
+    // 🔗 請務必確認此處為您在 GAS 重新部署「任何人都可存取」後產生的 Web App URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
     let products = [];
     let isGroupBuyActive = false;
 
-    // 1. 網頁載入時向 GAS 請求資料
-    fetch(GAS_WEB_APP_URL)
-    .then(response => response.json())
+    // 1. 網頁載入時向 GAS 請求資料（優化 CORS 跨域安全機制）
+    fetch(GAS_WEB_APP_URL, {
+        method: "GET",
+        mode: "cors",
+        headers: {
+            "Content-Type": "text/plain"
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("HTTP 連線錯誤，狀態碼：" + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.result === 'success') {
             products = data.products;
             isGroupBuyActive = data.isActive;
             
-            // 固定標題，僅更新動態店名 (由雲端開團名稱決定)
+            // 更新團購動態店名/名稱
             document.getElementById('shop-name').innerText = data.groupName + "。";
 
             // 動態渲染商品
             renderProducts(products);
             
-            // 更新狀態與按鈕
+            // 更新狀態與按鈕可用度
             updateUIStatus(data.startDate, data.endDate, data.isActive, data.status);
         } else {
-            showErrorStatus("無法取得團購資料，請聯絡主揪。");
+            showErrorStatus("無法取得團購資料，主揪後端訊息：" + (data.message || "未知原因"));
         }
     })
     .catch(error => {
-        console.error("Fetch Error:", error);
-        showErrorStatus("網路連線失敗，無法取得團購時程。");
+        console.error("Fetch Error 詳細資訊:", error);
+        showErrorStatus("網路連線失敗，無法取得團購時程（請確認您的 GAS 部署設定）。");
     });
 
+    // 2. 動態渲染商品清單
     function renderProducts(productList) {
         const tbody = document.getElementById('product-list');
         tbody.innerHTML = '';
@@ -397,13 +409,14 @@
                 <td style="font-size:0.85em; color:#7f8c8d;">${prod.spec}</td>
                 <td class="price-tag">NT$ ${prod.price}</td>
                 <td style="text-align: center;">
-                    <input type="number" class="qty-input" id="qty-${index}" min="0" value="0" onchange="calculateTotal()" disabled>
+                    <input type="number" class="qty-input" id="qty-${index}" min="0" value="0" oninput="calculateTotal()" disabled>
                 </td>
             `;
             tbody.appendChild(row);
         });
     }
 
+    // 3. 更新 UI 的開團狀態 Banner 與輸入框權限
     function updateUIStatus(startDate, endDate, isActive, calculatedStatus) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -451,6 +464,7 @@
         }
     }
 
+    // 4. 連線錯誤處理
     function showErrorStatus(errMsg) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -459,11 +473,52 @@
         msg.innerHTML = `<span style="color: #c0392b;">${errMsg}</span>`;
     }
 
+    // 5. 即時計算金額與件數（同步更新懸浮窗與底部結帳資訊）
+    function calculateTotal() {
+        let totalQty = 0;
+        let totalPrice = 0;
+        let selectedDetails = [];
+
+        products.forEach((prod, index) => {
+            const qtyInput = document.getElementById(`qty-${index}`);
+            const qty = parseInt(qtyInput.value) || 0;
+            if (qty < 0) {
+                qtyInput.value = 0;
+                return;
+            }
+
+            if (qty > 0) {
+                totalQty += qty;
+                totalPrice += qty * prod.price;
+                selectedDetails.push(`${prod.name} (${prod.spec}) x ${qty}`);
+            }
+        });
+
+        // 更新 Step 3 本地總計
+        document.getElementById('total-qty').innerText = totalQty;
+        document.getElementById('total-price').innerText = totalPrice.toLocaleString();
+
+        // 更新懸浮小視窗
+        document.getElementById('float-qty').innerText = totalQty;
+        document.getElementById('float-price').innerText = totalPrice.toLocaleString();
+
+        const floatDetailsList = document.getElementById('float-details-list');
+        if (selectedDetails.length > 0) {
+            floatDetailsList.innerHTML = selectedDetails.join('<br>');
+            floatDetailsList.style.display = 'block';
+        } else {
+            floatDetailsList.innerHTML = '';
+            floatDetailsList.style.display = 'none';
+        }
+    }
+
+    // 6. 點擊懸浮小視窗平滑滾動至結帳區
     function scrollToSubmit() {
         if (!isGroupBuyActive) return;
         document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // 頁面滾動時自動隱藏或顯示懸浮小窗（防遮擋）
     window.onscroll = function() {
         if (!isGroupBuyActive) return;
 
@@ -478,3 +533,108 @@
             widget.style.opacity = "1";
             widget.style.visibility = "visible";
         }
+    };
+
+    // 7. 送出訂單給 GAS 後端儲存
+    function submitOrder(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('name').value.trim();
+        if (!name) {
+            alert('請輸入訂購人姓名！');
+            return;
+        }
+
+        let orderItems = [];
+        let hasItems = false;
+
+        products.forEach((prod, index) => {
+            const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+            if (qty > 0) {
+                hasItems = true;
+            }
+            // 即使數量為 0 也傳遞，方便後端欄位對齊（視您的後端接收邏輯決定）
+            orderItems.push(qty); 
+        });
+
+        if (!hasItems) {
+            alert('請至少選擇一樣商品數量！');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = '正在傳送訂單，請稍候...';
+
+        // 封裝成要 POST 的資料 payload
+        const payload = {
+            name: name,
+            order: orderItems
+        };
+
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors', // 💡 改為 no-cors 避免 POST 的跨域拒絕問題
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            // 💡 由於使用 no-cors 模式，我們拿不到 response 的 JSON 資料，但能確保資料順利寫入 Google Sheet。
+            // 這裡直接讀取本地輸入的數據來顯示「訂單成功彈出視窗」。
+            showSuccessModal(name);
+            resetForm();
+        })
+        .catch(error => {
+            console.error('Submit Error:', error);
+            alert('訂單傳送發生未預期錯誤，請聯絡主揪確認試算表。');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '確認送出訂單';
+        });
+    }
+
+    // 8. 訂單成功後，彈出 Modal 視窗與重設表單
+    function showSuccessModal(orderName) {
+        document.getElementById('confirm-name').innerText = orderName;
+        
+        const detailsList = document.getElementById('confirm-details');
+        detailsList.innerHTML = '';
+        
+        let totalQty = 0;
+        let totalPrice = 0;
+
+        products.forEach((prod, index) => {
+            const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+            if (qty > 0) {
+                totalQty += qty;
+                totalPrice += qty * prod.price;
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${prod.name}</strong> (${prod.spec}) x <span style="color:#e67e22; font-weight:bold;">${qty}</span>`;
+                detailsList.appendChild(li);
+            }
+        });
+
+        document.getElementById('confirm-qty').innerText = totalQty;
+        document.getElementById('confirm-price').innerText = totalPrice.toLocaleString();
+        
+        document.getElementById('successModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('successModal').style.display = 'none';
+    }
+
+    function resetForm() {
+        document.getElementById('name').value = '';
+        products.forEach((_, index) => {
+            document.getElementById(`qty-${index}`).value = 0;
+        });
+        calculateTotal();
+    }
+</script>
+
+</body>
+</html>

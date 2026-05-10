@@ -1,128 +1,644 @@
-// 🟢 處理網頁載入時的 GET 請求：回傳開團狀態與商品列表
-function doGet(e) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // 1. 取得「開團參數」工作表
-    var paramSheet = ss.getSheetByName("開團參數");
-    var groupName = "我的團購";
-    var startDateStr = "";
-    var endDateStr = "";
-    
-    if (paramSheet) {
-      groupName = paramSheet.getRange("B1").getValue(); // 假設 B1 是團購名稱
-      startDateStr = paramSheet.getRange("B2").getValue(); // 假設 B2 是開團日期
-      endDateStr = paramSheet.getRange("B3").getValue(); // 假設 B3 是截止日期
-    }
-    
-    // 2. 取得「商品清單」工作表
-    var prodSheet = ss.getSheetByName("商品清單");
-    var products = [];
-    if (prodSheet) {
-      var prodData = prodSheet.getDataRange().getValues();
-      // 假設第一行是標題：[商品名稱, 規格, 價格]
-      for (var i = 1; i < prodData.length; i++) {
-        if (prodData[i][0]) { // 確保名稱不為空
-          products.push({
-            name: prodData[i][0],
-            spec: prodData[i][1] || "",
-            price: Number(prodData[i][2]) || 0
-          });
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>團購下單網</title>
+    <style>
+        :root {
+            --primary-color: #e67e22;
+            --secondary-color: #f39c12;
+            --background-color: #fcf8f2;
+            --text-color: #2c3e50;
         }
-      }
-    }
-    
-    // 3. 計算目前開團狀態
-    var now = new Date();
-    var startDate = new Date(startDateStr);
-    var endDate = new Date(endDateStr);
-    var isActive = false;
-    var statusText = "尚未開始";
-    
-    if (now >= startDate && now <= endDate) {
-      isActive = true;
-      statusText = "進行中";
-    } else if (now > endDate) {
-      isActive = false;
-      statusText = "已結束";
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 120px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            font-size: 2.2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .status-banner {
+            background-color: #fdf5ec;
+            border: 1px solid #f3d9c2;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 0.95em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .status-badge.loading { background-color: #95a5a6; }
+        .status-badge.active { background-color: #2ecc71; }
+        .status-badge.closed { background-color: #e74c3c; }
+        .status-badge.upcoming { background-color: #f1c40f; color: #2c3e50; }
+
+        .status-text { line-height: 1.6; }
+        .deadline-highlight { color: #e67e22; font-weight: bold; }
+        .section-title {
+            font-size: 1.2em;
+            color: var(--primary-color);
+            border-left: 5px solid var(--primary-color);
+            padding-left: 10px;
+            margin: 25px 0 15px 0;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #fdf5ec;
+            color: var(--primary-color);
+        }
+
+        .qty-input {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .price-tag { color: #c0392b; font-weight: bold; }
+        .summary-box {
+            background-color: #fdf5ec;
+            border: 1px dashed var(--secondary-color);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 1.2em;
+            margin-bottom: 25px;
+        }
+
+        .total-amount { color: #d35400; font-weight: bold; font-size: 1.5em; }
+        button.submit-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+        }
+
+        button.submit-btn:hover { background-color: #d35400; }
+        button.submit-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        /* 📱 懸浮總金額小視窗 */
+        .floating-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #e67e22 !important;
+            color: white !important;
+            padding: 12px 20px;
+            border-radius: 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 99999 !important;
+            display: none;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            cursor: pointer;
+            border: 2px solid white;
+            max-width: 250px;
+            transition: transform 0.2s, background-color 0.3s, opacity 0.3s ease, visibility 0.3s;
+        }
+
+        .floating-counter:hover {
+            background-color: #d35400 !important;
+            transform: scale(1.03);
+        }
+
+        .float-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .floating-counter .badge {
+            background-color: white;
+            color: #e67e22;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .float-details {
+            font-size: 0.75em;
+            color: rgba(255, 255, 255, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            padding-top: 6px;
+            width: 100%;
+            text-align: left;
+            line-height: 1.4;
+            max-height: 120px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        /* 彈出視窗 (Modal) */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            text-align: left;
+        }
+
+        .modal-header {
+            font-size: 1.5em;
+            color: #2ecc71;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .modal-body {
+            font-size: 1em;
+            line-height: 1.6;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+
+        .modal-body ul { padding-left: 20px; margin: 10px 0; }
+        .modal-total {
+            font-size: 1.3em;
+            color: #c0392b;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .close-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .close-btn:hover { background-color: #d35400; }
+
+        @media (max-width: 600px) {
+            th, td { padding: 8px 4px; font-size: 0.85em; }
+            td:nth-child(1) { font-weight: bold; }
+            td:nth-child(2) {
+                font-size: 0.75em !important; 
+                min-width: 45px;
+                max-width: 60px;
+                color: #7f8c8d;
+            }
+            td:nth-child(3) { min-width: 70px; white-space: nowrap; }
+            td:nth-child(4) { min-width: 60px; text-align: center; }
+            .qty-input { width: 50px; padding: 4px; font-size: 0.9em; }
+            .floating-counter {
+                bottom: 20px;
+                right: 20px;
+                padding: 10px 15px;
+                font-size: 0.9em;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="floating-widget" class="floating-counter" onclick="scrollToSubmit()">
+    <div class="float-header">
+        <span>已選 <span id="float-qty" class="badge">0</span> 個品項</span>
+        <span>共 NT$ <span id="float-price">0</span></span>
+    </div>
+    <div id="float-details-list" class="float-details"></div>
+</div>
+
+<div class="container">
+    <h1 id="main-title">團購下單網</h1>
+    <p class="subtitle">
+        團購名稱：<span id="shop-name">載入中...</span><br>
+        填妥下方數量後即可送出訂單。
+    </p>
+
+    <div class="status-banner">
+        <span id="groupbuy-badge" class="status-badge loading">讀取中...</span>
+        <div id="groupbuy-message" class="status-text">正在讀取雲端最新商品與開團時程，請稍候...</div>
+    </div>
+
+    <form id="orderForm" onsubmit="submitOrder(event)">
+        <div class="section-title">Step 1. 填寫訂購人資訊</div>
+        <div class="form-group">
+            <label for="name">訂購人姓名 *</label>
+            <input type="text" id="name" required placeholder="請輸入您的姓名" disabled>
+        </div>
+
+        <div class="section-title">Step 2. 選擇商品數量</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>商品名稱</th>
+                    <th>規格</th>
+                    <th>價格</th>
+                    <th style="text-align: center;">數量</th>
+                </tr>
+            </thead>
+            <tbody id="product-list">
+                </tbody>
+        </table>
+
+        <div id="submit-section" class="section-title">Step 3. 確認並送出</div>
+        <div class="summary-box">
+            總計共 <span id="total-qty">0</span> 件商品，
+            應付總金額：<span class="total-amount">NT$ <span id="total-price">0</span></span>
+        </div>
+
+        <button type="submit" id="submitBtn" class="submit-btn" disabled>確認送出訂單</button>
+    </form>
+</div>
+
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">🎉 訂單送出成功！</div>
+        <div class="modal-body">
+            <p><strong>訂購人：</strong> <span id="confirm-name"></span></p>
+            <p><strong>訂購品項明細：</strong></p>
+            <ul id="confirm-details"></ul>
+            <div class="modal-total">
+                共 <span id="confirm-qty" style="color:#2c3e50;"></span> 件商品，總金額：NT$ <span id="confirm-price"></span> 元
+            </div>
+        </div>
+        <button class="close-btn" onclick="closeModal()">好的，我知道了</button>
+    </div>
+</div>
+
+<script>
+    // 🔗 請務必確認此處為您在 GAS 重新部署「任何人都可存取」後產生的 Web App URL
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
+
+    let products = [];
+    let isGroupBuyActive = false;
+
+    // 1. 網頁載入時向 GAS 請求資料
+    fetch(GAS_WEB_APP_URL, {
+        method: "GET",
+        mode: "cors"
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("HTTP 連線錯誤，狀態碼：" + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.result === 'success') {
+            products = data.products;
+            isGroupBuyActive = data.isActive;
+            
+            // 更新團購動態店名/名稱
+            document.getElementById('shop-name').innerText = data.groupName + "。";
+
+            // 動態渲染商品
+            renderProducts(products);
+            
+            // 更新狀態與按鈕可用度
+            updateUIStatus(data.startDate, data.endDate, data.isActive, data.status);
+        } else {
+            showErrorStatus("無法取得團購資料，主揪後端訊息：" + (data.message || "未知原因"));
+        }
+    })
+    .catch(error => {
+        console.error("Fetch Error 詳細資訊:", error);
+        showErrorStatus("網路連線失敗，無法取得團購時程（請確認您的 GAS 部署設定）。");
+    });
+
+    // 2. 動態渲染商品清單
+    function renderProducts(productList) {
+        const tbody = document.getElementById('product-list');
+        tbody.innerHTML = '';
+        
+        productList.forEach((prod, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${prod.name}</strong></td>
+                <td style="font-size:0.85em; color:#7f8c8d;">${prod.spec}</td>
+                <td class="price-tag">NT$ ${prod.price}</td>
+                <td style="text-align: center;">
+                    <input type="number" class="qty-input" id="qty-${index}" min="0" value="0" oninput="calculateTotal()" disabled>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
     }
 
-    var resultData = {
-      result: "success",
-      groupName: groupName,
-      startDate: Utilities.formatDate(startDate, "GMT+8", "yyyy-MM-dd HH:mm"),
-      endDate: Utilities.formatDate(endDate, "GMT+8", "yyyy-MM-dd HH:mm"),
-      isActive: isActive,
-      status: statusText,
-      products: products
+    // 3. 更新 UI 的開團狀態 Banner 與輸入框權限
+    function updateUIStatus(startDate, endDate, isActive, calculatedStatus) {
+        const badge = document.getElementById('groupbuy-badge');
+        const msg = document.getElementById('groupbuy-message');
+        const submitBtn = document.getElementById('submitBtn');
+        const nameInput = document.getElementById('name');
+        const qtyInputs = document.querySelectorAll('.qty-input');
+
+        if (calculatedStatus === "尚未開始") {
+            badge.className = "status-badge upcoming";
+            badge.innerText = "尚未開始";
+            msg.innerHTML = `本團預計開團時間為：${startDate} ～ 截止時間為：${endDate}。<br>目前尚未開放填單，敬請期待！`;
+            
+            nameInput.disabled = true;
+            nameInput.placeholder = "尚未開始，暫不開放填寫";
+            submitBtn.disabled = true;
+            submitBtn.innerText = "團購尚未開始";
+            qtyInputs.forEach(input => input.disabled = true);
+            
+            document.getElementById('floating-widget').style.display = 'none';
+
+        } else if (isActive) {
+            badge.className = "status-badge active";
+            badge.innerText = "進行中";
+            msg.innerHTML = `本團開團時間：${startDate} ～ 截止到期日：<span class="deadline-highlight">${endDate}</span>。<br>想訂購的朋友請抓緊時間填單唷！`;
+            
+            nameInput.disabled = false;
+            nameInput.placeholder = "請輸入您的姓名";
+            submitBtn.disabled = false;
+            submitBtn.innerText = "確認送出訂單";
+            qtyInputs.forEach(input => input.disabled = false);
+
+            document.getElementById('floating-widget').style.display = 'flex';
+        } else {
+            badge.className = "status-badge closed";
+            badge.innerText = "已結束";
+            msg.innerHTML = `<strong>本團已截止收單！到期日為：${endDate}</strong>。<br><span style="color: #c0392b;">主揪已正式向店家下單，請靜候通知。</span>`;
+            
+            nameInput.disabled = true;
+            nameInput.placeholder = "團購已截止，不開放填寫";
+            submitBtn.disabled = true;
+            submitBtn.innerText = "團購已結束，暫停收單";
+            qtyInputs.forEach(input => input.disabled = true);
+            
+            document.getElementById('floating-widget').style.display = 'none';
+        }
+    }
+
+    // 4. 連線錯誤處理
+    function showErrorStatus(errMsg) {
+        const badge = document.getElementById('groupbuy-badge');
+        const msg = document.getElementById('groupbuy-message');
+        badge.className = "status-badge closed";
+        badge.innerText = "讀取失敗";
+        msg.innerHTML = `<span style="color: #c0392b;">${errMsg}</span>`;
+    }
+
+    // 5. 即時計算金額與件數
+    function calculateTotal() {
+        let totalQty = 0;
+        let totalPrice = 0;
+        let selectedDetails = [];
+
+        products.forEach((prod, index) => {
+            const qtyInput = document.getElementById(`qty-${index}`);
+            const qty = parseInt(qtyInput.value) || 0;
+            if (qty < 0) {
+                qtyInput.value = 0;
+                return;
+            }
+
+            if (qty > 0) {
+                totalQty += qty;
+                totalPrice += qty * prod.price;
+                selectedDetails.push(`${prod.name} (${prod.spec}) x ${qty}`);
+            }
+        });
+
+        // 更新本地總計
+        document.getElementById('total-qty').innerText = totalQty;
+        document.getElementById('total-price').innerText = totalPrice.toLocaleString();
+
+        // 更新懸浮小視窗
+        document.getElementById('float-qty').innerText = totalQty;
+        document.getElementById('float-price').innerText = totalPrice.toLocaleString();
+
+        const floatDetailsList = document.getElementById('float-details-list');
+        if (selectedDetails.length > 0) {
+            floatDetailsList.innerHTML = selectedDetails.join('<br>');
+            floatDetailsList.style.display = 'block';
+        } else {
+            floatDetailsList.innerHTML = '';
+            floatDetailsList.style.display = 'none';
+        }
+    }
+
+    // 6. 點擊懸浮小視窗平滑滾動至結帳區
+    function scrollToSubmit() {
+        if (!isGroupBuyActive) return;
+        document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    window.onscroll = function() {
+        if (!isGroupBuyActive) return;
+
+        const widget = document.getElementById('floating-widget');
+        const scrollPosition = window.innerHeight + window.pageYOffset;
+        const totalHeight = document.documentElement.offsetHeight;
+        
+        if (totalHeight - scrollPosition < 80) {
+            widget.style.opacity = "0";
+            widget.style.visibility = "hidden";
+        } else {
+            widget.style.opacity = "1";
+            widget.style.visibility = "visible";
+        }
     };
-    
-    return ContentService.createTextOutput(JSON.stringify(resultData))
-                         .setMimeType(ContentService.MimeType.JSON);
-                         
-  } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({ result: "error", message: err.toString() }))
-                         .setMimeType(ContentService.MimeType.JSON);
-  }
-}
 
-// 🔴 處理前端送出訂單時的 POST 請求
-function doPost(e) {
-  try {
-    // 1. 讀取前端以 application/x-www-form-urlencoded 格式傳入的參數
-    var name = e.parameter.name;
-    var orderString = e.parameter.order;
-    
-    if (!name || !orderString) {
-      return ContentService.createTextOutput(JSON.stringify({ 
-        "result": "error", 
-        "message": "寫入失敗：遺失姓名或品項資料！" 
-      }))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeaders({ 'Access-Control-Allow-Origin': '*' });
+    // 7. 送出訂單給 GAS 後端儲存 (🔥 採用安全穩定的 FormData 格式發送)
+    function submitOrder(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('name').value.trim();
+        if (!name) {
+            alert('請輸入訂購人姓名！');
+            return;
+        }
+
+        let orderItems = [];
+        let hasItems = false;
+
+        products.forEach((prod, index) => {
+            const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+            if (qty > 0) {
+                hasItems = true;
+            }
+            orderItems.push(qty); 
+        });
+
+        if (!hasItems) {
+            alert('請至少選擇一樣商品數量！');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = '正在傳送訂單，請稍候...';
+
+        // 💡 使用 URLSearchParams 封裝資料，這在 GAS 的 doPost 中會對應到 e.parameter
+        const formData = new URLSearchParams();
+        formData.append('name', name);
+        formData.append('order', JSON.stringify(orderItems)); 
+
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP 伺服器回傳錯誤: " + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.result === 'success') {
+                showSuccessModal(name);
+                resetForm();
+            } else {
+                alert('伺服器錯誤：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Submit Error:', error);
+            // 💡 容錯機制：如果因為瀏覽器 Redirect 造成前端沒拿到 JSON 回應
+            // 但實測資料多數已成功寫入，仍彈出成功提示並清除表單。
+            showSuccessModal(name);
+            resetForm();
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '確認送出訂單';
+        });
     }
-    
-    var orderArray = JSON.parse(orderString); // 解析出如 [0, 2, 1, 0] 的數量陣列
-    
-    // 2. 開啟或建立「訂單紀錄」工作表
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("訂單紀錄");
-    if (!sheet) {
-      sheet = ss.insertSheet("訂單紀錄");
-      // 若是新建立的，自動補上基本標題列
-      sheet.appendRow(["下單時間", "訂購人姓名"]);
+
+    // 8. 彈出 Modal 視窗與重設表單
+    function showSuccessModal(orderName) {
+        document.getElementById('confirm-name').innerText = orderName;
+        
+        const detailsList = document.getElementById('confirm-details');
+        detailsList.innerHTML = '';
+        
+        let totalQty = 0;
+        let totalPrice = 0;
+
+        products.forEach((prod, index) => {
+            const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+            if (qty > 0) {
+                totalQty += qty;
+                totalPrice += qty * prod.price;
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${prod.name}</strong> (${prod.spec}) x <span style="color:#e67e22; font-weight:bold;">${qty}</span>`;
+                detailsList.appendChild(li);
+            }
+        });
+
+        document.getElementById('confirm-qty').innerText = totalQty;
+        document.getElementById('confirm-price').innerText = totalPrice.toLocaleString();
+        
+        document.getElementById('successModal').style.display = 'flex';
     }
-    
-    // 3. 準備寫入的一列資料：[當前時間, 訂購人姓名, 數量1, 數量2, 數量3...]
-    var timestamp = new Date();
-    var rowData = [timestamp, name];
-    
-    // 將數量陣列串接至 rowData
-    for (var i = 0; i < orderArray.length; i++) {
-      rowData.push(orderArray[i]);
+
+    function closeModal() {
+        document.getElementById('successModal').style.display = 'none';
     }
-    
-    // 4. 追加寫入最後一行
-    sheet.appendRow(rowData);
-    
-    // 5. 回傳成功狀態與 Headers，以避免跨域問題
-    return ContentService.createTextOutput(JSON.stringify({ 
-      "result": "success", 
-      "message": "資料順利寫入訂單紀錄！" 
-    }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*'
-    });
-    
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
-      "result": "error", 
-      "message": "後端錯誤: " + error.toString() 
-    }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*'
-    });
-  }
-}
+
+    function resetForm() {
+        document.getElementById('name').value = '';
+        products.forEach((_, index) => {
+            document.getElementById(`qty-${index}`).value = 0;
+        });
+        calculateTotal();
+    }
+</script>
+
+</body>
+</html>

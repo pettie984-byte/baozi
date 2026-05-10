@@ -36,11 +36,13 @@
             margin-bottom: 5px;
         }
 
+        /* 調整副標題，讓分行後的行高更美觀 */
         .subtitle {
             text-align: center;
             color: #7f8c8d;
             margin-bottom: 30px;
             font-size: 0.95em;
+            line-height: 1.6; /* 增加行高，讓兩行字不會太擠 */
         }
 
         .section-title {
@@ -156,7 +158,7 @@
             border: 2px solid white;
             max-width: 250px;
             
-            /* 👇 為了讓滾動時隱藏/顯現更平滑，加入動畫效果 👇 */
+            /* 為了讓滾動時隱藏/顯現更平滑，加入動畫效果 */
             transition: transform 0.2s, background-color 0.3s, opacity 0.3s ease, visibility 0.3s;
             opacity: 1;
             visibility: visible;
@@ -325,8 +327,11 @@
 </div>
 
 <div class="container">
-    <h1>手工包子饅頭團購單</h1>
-    <p class="subtitle">店名:鄉品包子。 填妥下方數量後即可送出訂單。</p>
+    <h1>包子饅頭團購單</h1>
+    <p class="subtitle">
+        店名：鄉品包子。<br>
+        填妥下方數量後即可送出訂單。
+    </p>
 
     <form id="orderForm" onsubmit="submitOrder(event)">
         <div class="section-title">Step 1. 填寫訂購人資訊</div>

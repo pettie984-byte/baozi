@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>團購下單網</title>
 
@@ -129,12 +129,62 @@ th{
     color:var(--primary-color);
 }
 
+/* 🟢 加減按鈕控制組 */
+.qty-control {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    width: 110px;
+    height: 34px;
+}
+
+.qty-btn {
+    width: 32px;
+    height: 100%;
+    background: #fdf5ec;
+    border: none;
+    color: var(--primary-color);
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.qty-btn:active {
+    background: #f3d9c2;
+}
+
+.qty-btn:disabled {
+    background: #eee;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* 🟢 優化後的手機純數字輸入框（無微調箭頭，不變形） */
 .qty-input{
-    width:60px;
-    padding:6px;
-    border:1px solid #ccc;
-    border-radius:4px;
-    text-align:center;
+    width: 46px;
+    height: 100%;
+    border: none;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    text-align: center;
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--text-color);
+    padding: 0;
+    box-sizing: border-box;
+    background: #fff;
+}
+
+.qty-input:focus {
+    outline: none;
 }
 
 .price-tag{
@@ -277,6 +327,24 @@ button.submit-btn:disabled{
     border-radius:6px;
     cursor:pointer;
     width:100%;
+}
+
+/* 手機版排版微調，避免欄位擠壓變形 */
+@media (max-width: 600px) {
+    th, td {
+        padding: 8px 4px;
+        font-size: 0.9em;
+    }
+    .qty-control {
+        width: 100px;
+        height: 30px;
+    }
+    .qty-btn {
+        width: 28px;
+    }
+    .qty-input {
+        width: 44px;
+    }
 }
 
 </style>
@@ -513,7 +581,7 @@ function loadData(){
 
 
 // =========================================
-// 顯示商品
+// 顯示商品（加入 + 與 - 按鈕元件）
 // =========================================
 
 function renderProducts(){
@@ -542,17 +610,20 @@ function renderProducts(){
             </td>
 
             <td>
-
-                <input
-                    type="number"
-                    min="0"
-                    value="0"
-                    class="qty-input"
-                    id="qty-${index}"
-                    oninput="calculateTotal()"
-                    disabled
-                >
-
+                <div class="qty-control">
+                    <button type="button" class="qty-btn dec-btn" onclick="changeQty(${index}, -1)" disabled>-</button>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        pattern="[0-9]*"
+                        value="0"
+                        class="qty-input"
+                        id="qty-${index}"
+                        oninput="validateAndCalculate(${index})"
+                        disabled
+                    >
+                    <button type="button" class="qty-btn inc-btn" onclick="changeQty(${index}, 1)" disabled>+</button>
+                </div>
             </td>
 
         `;
@@ -565,7 +636,37 @@ function renderProducts(){
 
 
 // =========================================
-// 更新狀態
+// 🟢 加減按鈕控制函式
+// =========================================
+
+function changeQty(index, change) {
+    if (!isGroupBuyActive) return;
+    const input = document.getElementById(`qty-${index}`);
+    let currentVal = parseInt(input.value) || 0;
+    let newVal = currentVal + change;
+    if (newVal < 0) newVal = 0;
+    input.value = newVal;
+    calculateTotal();
+}
+
+
+// =========================================
+// 🟢 手動輸入防呆與即時試算
+// =========================================
+
+function validateAndCalculate(index) {
+    const input = document.getElementById(`qty-${index}`);
+    // 只保留數字，過濾掉英文字母或小數點，防止手機輸入法bug
+    input.value = input.value.replace(/[^0-9]/g, '');
+    if (input.value === "") {
+        // 空白時先不要強行帶入 0，方便使用者打字，但計算時當作 0
+    }
+    calculateTotal();
+}
+
+
+// =========================================
+// 更新狀態（一併控制按鈕開關）
 // =========================================
 
 function updateUIStatus(
@@ -589,6 +690,9 @@ function updateUIStatus(
 
     const qtyInputs =
         document.querySelectorAll(".qty-input");
+        
+    const qtyBtns = 
+        document.querySelectorAll(".qty-btn");
 
     if(status === "尚未開始"){
 
@@ -619,6 +723,10 @@ function updateUIStatus(
 
         qtyInputs.forEach(
             input => input.disabled = false
+        );
+        
+        qtyBtns.forEach(
+            btn => btn.disabled = false
         );
 
         document.getElementById(
@@ -669,7 +777,6 @@ function calculateTotal(){
 
             totalPrice += qty * prod.price;
 
-            // 💡 判斷規格：如果商品有規格，就串接上規格，否則只顯示商品名稱
             const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
             selectedDetails.push(
                 `${displayName} x ${qty}`
@@ -772,7 +879,7 @@ function submitOrder(event){
 
                 name: prod.name,
 
-                spec: prod.spec || "", // 確保規格欄位存在
+                spec: prod.spec || "",
 
                 qty: qty,
 
@@ -851,7 +958,6 @@ function submitOrder(event){
 
         console.error(err);
 
-        // GAS 很常已寫入成功但 fetch 被擋，保險起見仍彈出視窗
         showSuccessModal(name);
 
         resetForm();
@@ -871,7 +977,7 @@ function submitOrder(event){
 
 
 // =========================================
-// 成功視窗（已加入「成功視窗規格」顯示）
+// 成功視窗
 // =========================================
 
 function showSuccessModal(name){
@@ -909,7 +1015,6 @@ function showSuccessModal(name){
             const li =
                 document.createElement("li");
 
-            // 💡 判斷規格：如果商品有規格，成功彈出視窗也會加上規格
             const displayName = prod.spec ? `${prod.name} (${prod.spec})` : prod.name;
 
             li.innerHTML =

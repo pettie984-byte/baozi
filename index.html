@@ -1106,6 +1106,30 @@ function resetForm(){
 
 }
 
+// =========================================
+// 🟢 監聽滾動：滑到最底部時隱藏懸浮視窗
+// =========================================
+window.addEventListener('scroll', () => {
+    const floatingWidget = document.getElementById("floating-widget");
+    
+    // 如果團購目前不是 active 狀態，就不需要處理懸浮視窗
+    if (!isGroupBuyActive) return;
+
+    // window.innerHeight: 瀏覽器視窗高度
+    // window.scrollY: 目前向下捲動的距離
+    // document.documentElement.scrollHeight: 整個網頁的總實際高度
+    // 加上 5 像素的緩衝值，確保在各種手機或瀏覽器縮放比例下都能精準觸發
+    const isBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 5);
+
+    if (isBottom) {
+        // 滑到最下面時，隱藏懸浮視窗
+        floatingWidget.style.display = "none";
+    } else {
+        // 往上滑動、離開底部時，重新顯示
+        floatingWidget.style.display = "flex";
+    }
+});
+
 </script>
 
 </body>

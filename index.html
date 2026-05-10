@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>包子饅頭 - 團購下單系統</title>
-    <style>
+    <title>團購下單系統</title> <style>
         :root {
             --primary-color: #e67e22;
             --secondary-color: #f39c12;
@@ -18,7 +17,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px;
-            padding-bottom: 120px; /* 留白避免內容被底部懸浮條遮擋 */
+            padding-bottom: 120px;
         }
 
         .container {
@@ -44,7 +43,6 @@
             line-height: 1.6;
         }
 
-        /* 📣 團購狀態公告欄樣式 */
         .status-banner {
             background-color: #fdf5ec;
             border: 1px solid #f3d9c2;
@@ -65,30 +63,12 @@
             margin-bottom: 8px;
         }
 
-        /* 讀取中（灰色） */
-        .status-badge.loading {
-            background-color: #95a5a6;
-        }
+        .status-badge.loading { background-color: #95a5a6; }
+        .status-badge.active { background-color: #2ecc71; }
+        .status-badge.closed { background-color: #e74c3c; }
 
-        /* 進行中（綠色） */
-        .status-badge.active {
-            background-color: #2ecc71;
-        }
-
-        /* 已結束（紅色） */
-        .status-badge.closed {
-            background-color: #e74c3c;
-        }
-
-        .status-text {
-            line-height: 1.6;
-        }
-
-        .deadline-highlight {
-            color: #e67e22;
-            font-weight: bold;
-        }
-
+        .status-text { line-height: 1.6; }
+        .deadline-highlight { color: #e67e22; font-weight: bold; }
         .section-title {
             font-size: 1.2em;
             color: var(--primary-color);
@@ -97,16 +77,8 @@
             margin: 25px 0 15px 0;
         }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
         input[type="text"] {
             width: 100%;
             padding: 10px;
@@ -141,11 +113,7 @@
             text-align: center;
         }
 
-        .price-tag {
-            color: #c0392b;
-            font-weight: bold;
-        }
-
+        .price-tag { color: #c0392b; font-weight: bold; }
         .summary-box {
             background-color: #fdf5ec;
             border: 1px dashed var(--secondary-color);
@@ -156,12 +124,7 @@
             margin-bottom: 25px;
         }
 
-        .total-amount {
-            color: #d35400;
-            font-weight: bold;
-            font-size: 1.5em;
-        }
-
+        .total-amount { color: #d35400; font-weight: bold; font-size: 1.5em; }
         button.submit-btn {
             background-color: var(--primary-color);
             color: white;
@@ -174,14 +137,8 @@
             transition: background 0.3s;
         }
 
-        button.submit-btn:hover {
-            background-color: #d35400;
-        }
-
-        button.submit-btn:disabled {
-            background-color: #bdc3c7;
-            cursor: not-allowed;
-        }
+        button.submit-btn:hover { background-color: #d35400; }
+        button.submit-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
 
         /* 📱 懸浮總金額小視窗 */
         .floating-counter {
@@ -194,7 +151,7 @@
             border-radius: 18px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             z-index: 99999 !important;
-            display: none; /* 預設先隱藏，等確認進行中才顯示 */
+            display: none;
             flex-direction: column;
             align-items: flex-end;
             gap: 6px;
@@ -282,11 +239,7 @@
             margin-bottom: 20px;
         }
 
-        .modal-body ul {
-            padding-left: 20px;
-            margin: 10px 0;
-        }
-
+        .modal-body ul { padding-left: 20px; margin: 10px 0; }
         .modal-total {
             font-size: 1.3em;
             color: #c0392b;
@@ -306,38 +259,20 @@
             width: 100%;
         }
 
-        .close-btn:hover {
-            background-color: #d35400;
-        }
+        .close-btn:hover { background-color: #d35400; }
 
-        /* 📱 手機板版面微調 */
         @media (max-width: 600px) {
-            th, td {
-                padding: 8px 4px; 
-                font-size: 0.85em;
-            }
-            td:nth-child(1) {
-                font-weight: bold;
-            }
+            th, td { padding: 8px 4px; font-size: 0.85em; }
+            td:nth-child(1) { font-weight: bold; }
             td:nth-child(2) {
                 font-size: 0.75em !important; 
                 min-width: 45px;
                 max-width: 60px;
                 color: #7f8c8d;
             }
-            td:nth-child(3) {
-                min-width: 70px;
-                white-space: nowrap;
-            }
-            td:nth-child(4) {
-                min-width: 60px;
-                text-align: center;
-            }
-            .qty-input {
-                width: 50px;
-                padding: 4px;
-                font-size: 0.9em;
-            }
+            td:nth-child(3) { min-width: 70px; white-space: nowrap; }
+            td:nth-child(4) { min-width: 60px; text-align: center; }
+            .qty-input { width: 50px; padding: 4px; font-size: 0.9em; }
             .floating-counter {
                 bottom: 20px;
                 right: 20px;
@@ -359,7 +294,7 @@
 </div>
 
 <div class="container">
-    <h1>手工包子饅頭團購單</h1>
+    <h1 id="main-title">載入中...</h1>
     <p class="subtitle">
         店名：鄉品包子。<br>
         填妥下方數量後即可送出訂單。
@@ -367,7 +302,7 @@
 
     <div class="status-banner">
         <span id="groupbuy-badge" class="status-badge loading">讀取中...</span>
-        <div id="groupbuy-message" class="status-text">正在讀取雲端最新團購時程，請稍候...</div>
+        <div id="groupbuy-message" class="status-text">正在讀取雲端最新商品與開團時程，請稍候...</div>
     </div>
 
     <form id="orderForm" onsubmit="submitOrder(event)">
@@ -388,7 +323,7 @@
                 </tr>
             </thead>
             <tbody id="product-list">
-            </tbody>
+                </tbody>
         </table>
 
         <div id="submit-section" class="section-title">Step 3. 確認並送出</div>
@@ -417,56 +352,30 @@
 </div>
 
 <script>
-    // 🔗 GAS 雲端 API 網址
+    // 🔗 請換成你的全新部署後產生的 GAS 網址
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNzVDCMRqfKxsOs1fS4IpVYARVtUrn9Z2Q9hfnfD-ydQYoxcv9V4Iw33Pgfmu_r9bAzA/exec";
 
-    // 商品清單
-    const products = [
-        { name: "鄉品鮮肉包", spec: "(5顆)", price: 125 },
-        { name: "酸菜鮮肉包", spec: "(5顆)", price: 150 },
-        { name: "竹筍鮮肉包", spec: "(5顆)", price: 150 },
-        { name: "香菇高麗菜包", spec: "(5顆)", price: 125 },
-        { name: "紅豆包", spec: "(5顆)", price: 125 },
-        { name: "芝麻包", spec: "(5顆)", price: 150 },
-        { name: "紅豆起司包", spec: "(5顆)", price: 150 },
-        { name: "白玉饅頭", spec: "(5顆)", price: 75 },
-        { name: "黑糖饅頭", spec: "(5顆)", price: 75 },
-        { name: "無糖饅頭", spec: "(5顆)", price: 75 },
-        { name: "全麥饅頭", spec: "(5顆)", price: 75 },
-        { name: "芝麻饅頭", spec: "(5顆)", price: 90 },
-        { name: "抹茶紅豆饅頭", spec: "(5顆)", price: 125 },
-        { name: "五穀雜糧饅頭", spec: "(5顆)", price: 150 },
-        { name: "雙料起司卷", spec: "(5顆)", price: 150 },
-        { name: "五穀雜糧小饅頭", spec: "(10顆)", price: 65 },
-        { name: "小饅頭", spec: "(10顆)", price: 50 }
-    ];
+    let products = [];
+    let isGroupBuyActive = false;
 
-    let isGroupBuyActive = false; // 由 API 動態判定
-
-    // 1. 網頁載入時，先渲染商品欄位（預設全部鎖定）
-    const tbody = document.getElementById('product-list');
-    products.forEach((prod, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><strong>${prod.name}</strong></td>
-            <td style="font-size:0.85em; color:#7f8c8d;">${prod.spec}</td>
-            <td class="price-tag">NT$ ${prod.price}</td>
-            <td style="text-align: center;">
-                <input type="number" class="qty-input" id="qty-${index}" min="0" value="0" onchange="calculateTotal()" disabled>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    // 2. 向 GAS 請求試算表中的「開團日期」與狀態
+    // 1. 網頁載入時直接向 GAS 請求最新開團設定與商品清單
     fetch(GAS_WEB_APP_URL)
     .then(response => response.json())
     .then(data => {
         if (data.result === 'success') {
+            products = data.products;
             isGroupBuyActive = data.isActive;
+            
+            // 動態更新網頁頂部標題、瀏覽器頁籤 Title
+            document.title = data.groupName;
+            document.getElementById('main-title').innerText = data.groupName;
+
+            // 動態渲染商品清單
+            renderProducts(products);
+            // 更新團購狀態與輸入框鎖定狀態
             updateUIStatus(data.startDate, data.endDate, data.isActive);
         } else {
-            showErrorStatus("無法取得團購日期，請聯絡主揪。");
+            showErrorStatus("無法取得團購資料，請聯絡主揪。");
         }
     })
     .catch(error => {
@@ -474,7 +383,26 @@
         showErrorStatus("網路連線失敗，無法取得團購時程。");
     });
 
-    // 3. 根據雲端抓到的日期與狀態更新 UI
+    // 動態渲染表格
+    function renderProducts(productList) {
+        const tbody = document.getElementById('product-list');
+        tbody.innerHTML = '';
+        
+        productList.forEach((prod, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${prod.name}</strong></td>
+                <td style="font-size:0.85em; color:#7f8c8d;">${prod.spec}</td>
+                <td class="price-tag">NT$ ${prod.price}</td>
+                <td style="text-align: center;">
+                    <input type="number" class="qty-input" id="qty-${index}" min="0" value="0" onchange="calculateTotal()" disabled>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // 根據雲端狀態更新 UI 的輸入控制項
     function updateUIStatus(startDate, endDate, isActive) {
         const badge = document.getElementById('groupbuy-badge');
         const msg = document.getElementById('groupbuy-message');
@@ -483,34 +411,28 @@
         const qtyInputs = document.querySelectorAll('.qty-input');
 
         if (isActive) {
-            // 🥳 進行中
             badge.className = "status-badge active";
             badge.innerText = "進行中";
             msg.innerHTML = `本團開團時間：${startDate} ～ 截止到期日：<span class="deadline-highlight">${endDate}</span>。<br>想訂購的朋友請抓緊時間填單唷！`;
             
-            // 解鎖輸入元件
             nameInput.disabled = false;
             nameInput.placeholder = "請輸入您的姓名";
             submitBtn.disabled = false;
             submitBtn.innerText = "確認送出訂單";
             qtyInputs.forEach(input => input.disabled = false);
 
-            // 顯示右下角懸浮視窗
             document.getElementById('floating-widget').style.display = 'flex';
         } else {
-            // 🚫 已截止 / 尚未開始
             badge.className = "status-badge closed";
             badge.innerText = "已結束（已下單）";
             msg.innerHTML = `<strong>本團已截止收單！到期日為：${endDate}</strong>。<br><span style="color: #c0392b;">主揪已正式向店家下單，請靜候通知。</span>`;
             
-            // 保持鎖定
             nameInput.disabled = true;
             nameInput.placeholder = "團購已截止，不開放填寫";
             submitBtn.disabled = true;
             submitBtn.innerText = "團購已結束，暫停收單";
             qtyInputs.forEach(input => input.disabled = true);
             
-            // 隱藏右下角懸浮視窗
             document.getElementById('floating-widget').style.display = 'none';
         }
     }
@@ -528,7 +450,6 @@
         document.getElementById('submit-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // 監聽滾動事件
     window.onscroll = function() {
         if (!isGroupBuyActive) return;
 
@@ -545,7 +466,7 @@
         }
     };
 
-    // 計算總計
+    // 計算總金額與總包數
     function calculateTotal() {
         let totalQty = 0;
         let totalPrice = 0;
@@ -607,8 +528,6 @@
         submitBtn.disabled = true;
         submitBtn.innerText = "訂單傳送中，請稍候...";
 
-        // 🔥 這裡進行了重要修正：改用 "\n" 換行來串接明細，不加上頓號。
-        // 這樣傳送到試算表時，儲存格就會完美辨識出多行，不再擠在同一行！
         const payload = {
             name: name,
             details: orderDetails.join('\n'), 

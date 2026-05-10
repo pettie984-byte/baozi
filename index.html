@@ -344,6 +344,23 @@ button.submit-btn:disabled{
     width:100%;
 }
 
+/* 🟢 骨架屏載入動畫 */
+@keyframes skeleton-loading {
+    0% { background-position: 150% 50%; }
+    100% { background-position: -50% 50%; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 37%, #f2f2f2 63%);
+    background-size: 400% 100%;
+    animation: skeleton-loading 1.4s ease infinite;
+    display: inline-block;
+    height: 1.2em;
+    border-radius: 4px;
+}
+.sk-w-80 { width: 80%; }
+.sk-w-50 { width: 50%; }
+.sk-w-30 { width: 30%; }
+
 /* RWD 手機版優化 */
 @media (max-width: 600px) {
     body {
@@ -556,12 +573,68 @@ let products = [];
 let isGroupBuyActive = false;
 
 
-// 初始化
-loadData();
+// 🟢 啟動初始化 (使用異步處理加速首頁渲染)
+initPage();
+
+function initPage() {
+    // 1. 先繪製「載入中骨架屏」跟嘗試讀取 LocalStorage 快取
+    renderSkeleton();
+    loadCacheData();
+    
+    // 2. 背景異步獲取最新的 GAS 數據
+    loadData();
+}
+
+// 🟢 繪製預載入骨架屏
+function renderSkeleton() {
+    const tbody = document.getElementById("product-list");
+    let skeletonHtml = "";
+    for (let i = 0; i < 4; i++) {
+        skeletonHtml += `
+            <tr>
+                <td><span class="skeleton sk-w-80"></span></td>
+                <td><span class="skeleton sk-w-50"></span></td>
+                <td><span class="skeleton sk-w-30"></span></td>
+                <td>
+                    <div class="qty-container" style="border:none; background:transparent;">
+                        <span class="skeleton" style="width:100%; height:100%;"></span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    tbody.innerHTML = skeletonHtml;
+}
+
+// 🟢 讀取本地快取（實現秒開功能）
+function loadCacheData() {
+    try {
+        const cached = localStorage.getItem("gb_products_cache");
+        if (cached) {
+            const cacheData = JSON.parse(cached);
+            products = cacheData.products || [];
+            isGroupBuyActive = cacheData.isActive;
+            
+            // 快速更新店名，減少空白感
+            document.getElementById("shop-name").innerText = cacheData.groupName || "載入中...";
+            renderProducts();
+            
+            // 啟用輸入框以防使用者想預填，但等新資料回來時會自動維持現狀
+            updateUIStatus(
+                cacheData.startDate,
+                cacheData.endDate,
+                cacheData.isActive,
+                cacheData.status
+            );
+        }
+    } catch (e) {
+        console.warn("無法取得快取資料:", e);
+    }
+}
 
 
 // =========================================
-// 載入商品
+// 載入商品（與 GAS 連線）
 // =========================================
 
 function loadData(){
@@ -572,13 +645,22 @@ function loadData(){
 
     .then(data => {
 
-        console.log(data);
+        console.log("最新數據：", data);
 
         if(data.result !== "success"){
 
             throw new Error(data.message);
 
         }
+
+        // 🟢 儲存到本地快取
+        localStorage.setItem("gb_products_cache", JSON.stringify(data));
+
+        // 記下使用者當前已輸入的數量，防止背景更新時洗掉使用者剛打的字
+        const prevQuantities = products.map((_, i) => {
+            const input = document.getElementById(`qty-${i}`);
+            return input ? (parseInt(input.value, 10) || 0) : 0;
+        });
 
         products = data.products || [];
 
@@ -588,6 +670,15 @@ function loadData(){
             .innerText = data.groupName;
 
         renderProducts();
+
+        // 🟢 還原背景刷新前，使用者剛輸入的數量
+        prevQuantities.forEach((val, index) => {
+            const input = document.getElementById(`qty-${index}`);
+            if (input && val > 0) {
+                input.value = val;
+            }
+        });
+        calculateTotal();
 
         updateUIStatus(
             data.startDate,
@@ -601,10 +692,11 @@ function loadData(){
     .catch(err => {
 
         console.error(err);
-
-        document.getElementById("groupbuy-message")
-            .innerHTML =
-            "<span style='color:red'>讀取失敗</span>";
+        // 如果快取裡已經有畫出東西，就不顯示悲劇的讀取失敗字樣，維持現狀
+        if (products.length === 0) {
+            document.getElementById("groupbuy-message")
+                .innerHTML = "<span style='color:red'>讀取失敗，請重新整理網頁。</span>";
+        }
 
     });
 
@@ -612,7 +704,7 @@ function loadData(){
 
 
 // =========================================
-// 顯示商品
+// 顯示商品（🟢 效能優化版：一次性寫入 DOM）
 // =========================================
 
 function renderProducts(){
@@ -620,50 +712,46 @@ function renderProducts(){
     const tbody =
         document.getElementById("product-list");
 
-    tbody.innerHTML = "";
+    let rowsHtml = "";
 
     products.forEach((prod,index)=>{
+        rowsHtml += `
+            <tr>
+                <td>
+                    <strong>${prod.name}</strong>
+                </td>
 
-        const row = document.createElement("tr");
+                <td class="spec-col">
+                    ${prod.spec || ""}
+                </td>
 
-        row.innerHTML = `
+                <td class="price-tag">
+                    NT$ ${prod.price}
+                </td>
 
-            <td>
-                <strong>${prod.name}</strong>
-            </td>
-
-            <td class="spec-col">
-                ${prod.spec || ""}
-            </td>
-
-            <td class="price-tag">
-                NT$ ${prod.price}
-            </td>
-
-            <td>
-                <div class="qty-container">
-                    <button type="button" class="qty-btn btn-dec" id="btn-dec-${index}" onclick="stepQty(${index}, -1)" disabled>−</button>
-                    
-                    <input
-                        type="text"
-                        inputmode="numeric"
-                        pattern="[0-9]*"
-                        value="0"
-                        class="qty-input"
-                        id="qty-${index}"
-                        oninput="validateAndCalculate(${index})"
-                        disabled
-                    >
-                    
-                    <button type="button" class="qty-btn btn-inc" id="btn-inc-${index}" onclick="stepQty(${index}, 1)" disabled>+</button>
-                </div>
-            </td>
-
+                <td>
+                    <div class="qty-container">
+                        <button type="button" class="qty-btn btn-dec" id="btn-dec-${index}" onclick="stepQty(${index}, -1)" disabled>−</button>
+                        
+                        <input
+                            type="text"
+                            inputmode="numeric"
+                            pattern="[0-9]*"
+                            value="0"
+                            class="qty-input"
+                            id="qty-${index}"
+                            oninput="validateAndCalculate(${index})"
+                            disabled
+                        >
+                        
+                        <button type="button" class="qty-btn btn-inc" id="btn-inc-${index}" onclick="stepQty(${index}, 1)" disabled>+</button>
+                    </div>
+                </td>
+            </tr>
         `;
-
-        tbody.appendChild(row);
-
     });
+
+    tbody.innerHTML = rowsHtml;
 
 }
 
